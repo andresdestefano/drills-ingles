@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1F4FD1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Drills">
+<title>Drills de Inglés</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+html,body{margin:0;height:100%}[hidden]{display:none!important}
+/* Layout: una columna de 560px, pensada para el pulgar: contenido arriba, acciones fijas abajo. */
+:root{
+  --bg:#F2F4F1; --surface:#FFFFFF; --ink:#16201D; --muted:#5B6A64; --line:#D9E0DB;
+  --accent:#1F4FD1; --accent-ink:#FFFFFF; --accent-soft:#E2E9FB;
+  --good:#1D7A4F; --good-soft:#DCF0E4; --warn:#9A6200; --warn-soft:#FAEDD2; --bad:#BE3A31; --bad-soft:#F8DFDB;
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0E1312; --surface:#161D1B; --ink:#E5EBE8; --muted:#93A29C; --line:#28322F;
+  --accent:#8EA7FF; --accent-ink:#0E1312; --accent-soft:#1D2646;
+  --good:#5DC993; --good-soft:#143023; --warn:#E6B04C; --warn-soft:#33280F; --bad:#F08279; --bad-soft:#3A1C19;
+  color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0E1312; --surface:#161D1B; --ink:#E5EBE8; --muted:#93A29C; --line:#28322F;
+  --accent:#8EA7FF; --accent-ink:#0E1312; --accent-soft:#1D2646;
+  --good:#5DC993; --good-soft:#143023; --warn:#E6B04C; --warn-soft:#33280F; --bad:#F08279; --bad-soft:#3A1C19;
+  color-scheme:dark; }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;padding-inline:16px;padding-block:0}
+#app{max-width:560px;margin:0 auto;padding-block:18px 150px;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.15}
+h1{font-size:1.55rem}
+h2{font-size:1.15rem}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+.eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+
+/* Botones */
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 16px;min-height:48px;font-weight:700}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.big{min-height:58px;font-size:1.08rem;width:100%}
+.btn.ghost{background:transparent}
+.btn.link{border:0;background:none;padding:6px 0;min-height:0;color:var(--accent);font-weight:700}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.mic{display:flex;align-items:center;justify-content:center;gap:8px}
+.btn.mic svg{width:20px;height:20px}
+.btn.mic.listening{background:var(--bad);border-color:var(--bad);color:#fff;animation:pulse 1.2s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.btn.mic.listening{animation:none}}
+.interim{color:var(--muted)}
+label.chk{display:flex;gap:10px;align-items:center;font-weight:400}
+label.chk input{width:20px;height:20px}
+
+/* Barra inferior fija */
+.dock{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom, 0px));z-index:5}
+.dock-in{max-width:560px;margin:0 auto;display:flex;gap:10px}
+.dock-in > *{flex:1}
+.tabs{display:flex;max-width:560px;margin:0 auto}
+.tab{flex:1;border:0;background:none;padding:8px 4px;min-height:52px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);font-size:.8rem;font-weight:700}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--accent)}
+
+/* Cajas de Leitner (0–6) */
+.boxes{display:inline-flex;gap:3px;vertical-align:middle}
+.boxes i{width:10px;height:14px;border-radius:3px;border:1.5px solid var(--line);display:block}
+.boxes i.on{background:var(--accent);border-color:var(--accent)}
+
+.pill{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.pill.learning{color:var(--warn);background:var(--warn-soft);border-color:transparent}
+.pill.mastered{color:var(--good);background:var(--good-soft);border-color:transparent}
+.pill.focus{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+
+/* Inicio */
+.focus-card{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.mix{display:flex;height:10px;border-radius:99px;overflow:hidden;gap:2px}
+.mix span{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.84rem;color:var(--muted)}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.win{background:var(--good-soft);border-color:transparent}
+.win h3{color:var(--good)}
+
+/* Drill */
+.drillhead{display:flex;align-items:center;gap:12px}
+.segs{flex:1;display:flex;gap:3px}
+.segs span{flex:1;height:6px;border-radius:3px;background:var(--line)}
+.segs span.correct{background:var(--good)} .segs span.almost{background:var(--warn)} .segs span.incorrect{background:var(--bad)}
+.segs span.now{background:var(--accent)}
+.es-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 20px;display:flex;flex-direction:column;gap:14px}
+.es{font-family:var(--display);font-weight:600;font-size:1.6rem;line-height:1.2;text-wrap:balance}
+.tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:var(--accent-soft);color:var(--accent);align-self:flex-start}
+.tag.mixed{background:var(--warn-soft);color:var(--warn)}
+.tag.review{background:var(--good-soft);color:var(--good)}
+.hint{font-family:var(--mono);font-size:.95rem;color:var(--warn);background:var(--warn-soft);border-radius:8px;padding:6px 10px;align-self:flex-start}
+textarea#ans{width:100%;min-height:96px;resize:vertical;border:1.5px solid var(--line);border-radius:14px;background:var(--surface);padding:14px;font-size:1.15rem;line-height:1.4}
+textarea#ans:focus{border-color:var(--accent);outline:none}
+.fb{display:flex;flex-direction:column;gap:14px}
+.fb .line{font-size:1.12rem;line-height:1.45;overflow-wrap:anywhere}
+.fb .x{background:var(--bad-soft);color:var(--bad);border-radius:4px;padding:0 3px;text-decoration:line-through;text-decoration-thickness:1.5px}
+.fb .miss{background:var(--good-soft);color:var(--good);border-radius:4px;padding:0 3px;font-weight:700}
+.rule{border-left:3px solid var(--accent);padding:4px 0 4px 12px}
+.alts{display:flex;flex-direction:column;gap:2px;color:var(--muted)}
+.verdict{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--display);font-weight:700;font-size:1.35rem;padding:12px 16px;border-radius:12px}
+.verdict small{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;font-weight:500;opacity:.8}
+.verdict.correct{background:var(--good-soft);color:var(--good)} .verdict.almost{background:var(--warn-soft);color:var(--warn)} .verdict.incorrect{background:var(--bad-soft);color:var(--bad)}
+.verdict.grading{background:var(--accent-soft);color:var(--accent);font-size:1.05rem}
+.verdict .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){.verdict .dot{animation:none}}
+.confirm{background:var(--warn-soft);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+
+/* Progreso */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile .n{font-family:var(--display);font-size:1.6rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.tile .l{font-size:.78rem;color:var(--muted)}
+.chart svg{width:100%;height:auto;display:block}
+.errs{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.errs li{display:grid;grid-template-columns:2.2rem 1fr;gap:8px;align-items:start}
+.errs .c{font-family:var(--mono);color:var(--bad);font-weight:500;text-align:right}
+.prow{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;text-align:left;width:100%}
+.prow .stats{display:flex;gap:14px;flex-wrap:wrap;font-size:.84rem;color:var(--muted)}
+.prow .stats b{color:var(--ink);font-family:var(--mono);font-weight:500}
+
+/* Frases */
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 14px;font-weight:700;font-size:.88rem;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.item{border-top:1px solid var(--line);padding:10px 0;display:flex;flex-direction:column;gap:2px;text-align:left;background:none;border-left:0;border-right:0;border-bottom:0;width:100%}
+.item .en{color:var(--muted)}
+label.f{display:flex;flex-direction:column;gap:4px;font-weight:700;font-size:.9rem}
+label.f input,label.f textarea,label.f select{border:1.5px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 12px;font-weight:400;font-size:1rem;width:100%}
+label.f textarea{min-height:76px;resize:vertical}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom, 0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.92rem;z-index:9;max-width:calc(100% - 32px)}
+.empty{text-align:center;padding:40px 10px;color:var(--muted)}
+@media (prefers-reduced-motion: no-preference){ .es-card{animation:rise .22s ease-out} @keyframes rise{from{transform:translateY(6px)}to{transform:none}} }
+</style>
+</head>
+<body>
+<div id="app" aria-live="polite"></div>
+<div id="dock" class="dock"></div>
+
+<script>
+"use strict";
+const INTERVAL = [0,1,2,4,7,15,30];
+const SESSION_SIZE = 20;
+const LS_KEY = "drills-ingles-v1", CFG_KEY = "drills-ingles-cfg";
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+const SEED = {"patterns": [{"id": "as-as", "name": "Igualdad — as … as", "level": 5, "order": 10, "rule": "tan ___ como = as ___ as. No «so ___ like».", "relatedTo": ["comp-short", "comp-long"], "items": [{"id": "as-as-001", "es": "Esta cerveza es tan buena como la otra.", "accepted": ["This beer is as good as the other.", "This beer is as good as the other one."], "hint": "as good as", "ruleShort": "tan buena como = as good as.", "tag": "7"}, {"id": "as-as-002", "es": "El italiano es tan difícil como el inglés.", "accepted": ["Italian is as difficult as English.", "Italian is as hard as English."], "hint": "as difficult as", "ruleShort": "Idiomas sin «the». as difficult as.", "tag": "7"}, {"id": "as-as-003", "es": "Hoy está tan caliente como ayer.", "accepted": ["Today it's as hot as yesterday.", "It's as hot today as yesterday.", "It's as hot today as it was yesterday."], "hint": "as hot as", "ruleShort": "Clima con «it»: it's as hot as.", "tag": "7"}, {"id": "as-as-004", "es": "Ella es tan rápida como él.", "accepted": ["She's as fast as him.", "She's as fast as he is."], "hint": "as fast as", "ruleShort": "as fast as him / as he is.", "tag": "7"}, {"id": "as-as-005", "es": "Dormir es tan importante como hacer ejercicio.", "accepted": ["Sleeping is as important as exercising.", "Sleep is as important as exercise."], "hint": "Sleeping", "ruleShort": "Verbo como sujeto = -ing: sleeping, exercising.", "tag": "13"}, {"id": "as-as-006", "es": "No es tan difícil como parece.", "accepted": ["It's not as difficult as it seems.", "It isn't as difficult as it seems.", "It's not as hard as it seems."], "hint": "it seems", "ruleShort": "not as ___ as. Sujeto también en «it seems».", "tag": "7"}, {"id": "as-as-007", "es": "No es tan lejos como pensé.", "accepted": ["It's not as far as I thought.", "It isn't as far as I thought."], "hint": "as far as", "ruleShort": "as far as I thought.", "tag": "7"}, {"id": "as-as-008", "es": "Este lugar es tan bueno como el otro.", "accepted": ["This place is as good as the other.", "This place is as good as the other one."], "hint": "as good as", "ruleShort": "tan bueno como = as good as.", "tag": "7"}, {"id": "as-as-009", "es": "Para mí, dormir es tan importante como hacer ejercicio.", "accepted": ["For me, sleeping is as important as exercising."], "hint": "For me", "ruleShort": "Para mí = For me. -ing como sujeto.", "tag": "13"}, {"id": "as-as-010", "es": "Esta cerveza es tan fría como la del bar.", "accepted": ["This beer is as cold as the one at the bar."], "hint": "the one", "ruleShort": "la del bar = the one at the bar.", "tag": "7"}]}, {"id": "comp-long", "name": "Comparativo — adjetivos largos", "level": 5, "order": 7, "rule": "Adjetivos de 3+ sílabas: more ___ than (no -er).", "relatedTo": ["comp-short", "superlative-long", "as-as"], "items": [{"id": "comp-long-001", "es": "Esta cerveza es más interesante que la otra.", "accepted": ["This beer is more interesting than the other.", "This beer is more interesting than the other one."], "hint": "more interesting", "ruleShort": "interesting → more interesting.", "tag": "28"}, {"id": "comp-long-002", "es": "El inglés es más complicado que el italiano.", "accepted": ["English is more complicated than Italian."], "hint": "more complicated", "ruleShort": "Idiomas sin «the». more complicated.", "tag": "5"}, {"id": "comp-long-003", "es": "Ella es más organizada que yo.", "accepted": ["She's more organized than me.", "She's more organized than I am."], "hint": "more organized", "ruleShort": "organized → more organized.", "tag": "28"}, {"id": "comp-long-004", "es": "Este problema es más importante que el otro.", "accepted": ["This problem is more important than the other.", "This problem is more important than the other one."], "hint": "more important", "ruleShort": "important → more important.", "tag": "28"}, {"id": "comp-long-005", "es": "La reunión fue más aburrida que la anterior.", "accepted": ["The meeting was more boring than the last one."], "hint": "more boring", "ruleShort": "boring → more boring. la anterior = the last one.", "tag": "28"}, {"id": "comp-long-006", "es": "Este camino es más peligroso que el otro.", "accepted": ["This road is more dangerous than the other.", "This road is more dangerous than the other one."], "hint": "more dangerous", "ruleShort": "dangerous → more dangerous.", "tag": "28"}, {"id": "comp-long-007", "es": "Esta semana fue más productiva que la pasada.", "accepted": ["This week was more productive than last week."], "hint": "more productive", "ruleShort": "la pasada = last week (sin «the»).", "tag": "28"}, {"id": "comp-long-008", "es": "Esta receta es más complicada que la anterior.", "accepted": ["This recipe is more complicated than the last one."], "hint": "more complicated", "ruleShort": "complicated → more complicated.", "tag": "28"}, {"id": "comp-long-009", "es": "Este hotel es más caro que el otro.", "accepted": ["This hotel is more expensive than the other.", "This hotel is more expensive than the other one."], "hint": "more expensive", "ruleShort": "caro = expensive → more expensive.", "tag": "28"}, {"id": "comp-long-010", "es": "Tamarindo es más famoso que mi pueblo.", "accepted": ["Tamarindo is more famous than my town."], "hint": "more famous", "ruleShort": "famous (2 sílabas, no termina en -y) → more famous.", "tag": "28"}]}, {"id": "comp-short", "name": "Comparativo — adjetivos cortos", "level": 5, "order": 6, "rule": "más ___ que = ___er than. Adjetivos en -ed usan «more» (more tired).", "relatedTo": ["comp-long", "superlative-short", "as-as"], "items": [{"id": "comp-short-001", "es": "Mi cerveza es más fría que la tuya.", "accepted": ["My beer is colder than yours."], "hint": "colder", "ruleShort": "cold → colder (adjetivo corto, -er).", "tag": "27"}, {"id": "comp-short-002", "es": "Este bar es más grande que el otro.", "accepted": ["This bar is bigger than the other.", "This bar is bigger than the other one."], "hint": "bigger", "ruleShort": "big → bigger (se dobla la g).", "tag": "27"}, {"id": "comp-short-003", "es": "Hoy estoy más cansado que ayer.", "accepted": ["Today I'm more tired than yesterday.", "I'm more tired today than yesterday."], "hint": "more tired", "ruleShort": "Adjetivos en -ed usan more: more tired.", "tag": "28"}, {"id": "comp-short-004", "es": "Ella es más rápida que yo.", "accepted": ["She's faster than me.", "She's faster than I am."], "hint": "faster", "ruleShort": "fast → faster. than me.", "tag": "27"}, {"id": "comp-short-005", "es": "El lunes fue más largo que el martes.", "accepted": ["Monday was longer than Tuesday."], "hint": "longer", "ruleShort": "long → longer.", "tag": "27"}, {"id": "comp-short-006", "es": "Esta calle es más ancha que la otra.", "accepted": ["This street is wider than the other.", "This street is wider than the other one."], "hint": "wider", "ruleShort": "wide → wider.", "tag": "27"}, {"id": "comp-short-007", "es": "Mi hermano es mayor que yo.", "accepted": ["My brother is older than me.", "My brother is older than I am."], "hint": "older", "ruleShort": "mayor (edad) = older.", "tag": "27"}, {"id": "comp-short-008", "es": "El agua está más caliente que ayer.", "accepted": ["The water is hotter than yesterday.", "The water is hotter than it was yesterday."], "hint": "hotter", "ruleShort": "hot → hotter (se dobla la t).", "tag": "27"}, {"id": "comp-short-009", "es": "Este ejercicio es más duro que el anterior.", "accepted": ["This workout is harder than the last one.", "This exercise is harder than the last one."], "hint": "harder", "ruleShort": "hard → harder. el anterior = the last one.", "tag": "27"}, {"id": "comp-short-010", "es": "Costa Rica es más pequeña que Venezuela.", "accepted": ["Costa Rica is smaller than Venezuela."], "hint": "smaller", "ruleShort": "small → smaller.", "tag": "27"}, {"id": "comp-short-011", "es": "Mi casa es más grande que la de mi hermano.", "accepted": ["My house is bigger than my brother's."], "hint": "brother's", "ruleShort": "la de mi hermano = my brother's.", "tag": "17"}, {"id": "comp-short-012", "es": "Este café está más fuerte que el de ayer.", "accepted": ["This coffee is stronger than yesterday's."], "hint": "stronger", "ruleShort": "el de ayer = yesterday's. strong → stronger.", "tag": "17"}, {"id": "comp-short-013", "es": "Estoy más cansado que esta mañana.", "accepted": ["I'm more tired than this morning.", "I'm more tired than I was this morning."], "hint": "more tired", "ruleShort": "tired (-ed) → more tired.", "tag": "28"}, {"id": "comp-short-014", "es": "Él es más alto que su papá.", "accepted": ["He's taller than his dad.", "He's taller than his father."], "hint": "taller", "ruleShort": "alto (persona) = tall → taller.", "tag": "27"}]}, {"id": "continuous-future", "name": "Presente continuo y going to", "level": 3, "order": 3, "rule": "Presente continuo = am/is/are + -ing. «pensar en» = think about + -ing. Planes = going to.", "relatedTo": ["present-simple", "past-simple"], "items": [{"id": "continuous-future-001", "es": "Estoy aprendiendo inglés.", "accepted": ["I'm learning English."], "hint": "learning", "ruleShort": "am / is / are + -ing.", "tag": "22"}, {"id": "continuous-future-002", "es": "Ella está cocinando.", "accepted": ["She's cooking."], "hint": "cooking", "ruleShort": "she is + -ing.", "tag": "22"}, {"id": "continuous-future-003", "es": "No estoy trabajando hoy.", "accepted": ["I'm not working today."], "hint": "not working", "ruleShort": "Negativo: am not + -ing.", "tag": "22"}, {"id": "continuous-future-004", "es": "¿Qué estás haciendo?", "accepted": ["What are you doing?"], "hint": "doing", "ruleShort": "Pregunta: What are you + -ing?", "tag": "22"}, {"id": "continuous-future-005", "es": "Estamos buscando un lugar nuevo.", "accepted": ["We're looking for a new place."], "hint": "looking for", "ruleShort": "buscar = look for (con «for»).", "tag": "22"}, {"id": "continuous-future-006", "es": "Voy a viajar a Italia el próximo año.", "accepted": ["I'm going to travel to Italy next year."], "hint": "going to", "ruleShort": "Planes: be going to + verbo. next year sin «the».", "tag": "23"}, {"id": "continuous-future-007", "es": "No voy a ir a la fiesta.", "accepted": ["I'm not going to go to the party.", "I'm not going to the party."], "hint": "not going", "ruleShort": "Negativo: I'm not going to + verbo.", "tag": "23"}, {"id": "continuous-future-008", "es": "Ella va a tener un bebé.", "accepted": ["She's going to have a baby."], "hint": "have", "ruleShort": "she's going to + verbo base.", "tag": "23"}, {"id": "continuous-future-009", "es": "¿Vas a comer algo?", "accepted": ["Are you going to eat something?", "Are you going to eat anything?"], "hint": "Are", "ruleShort": "Pregunta: Are you going to + verbo?", "tag": "23"}, {"id": "continuous-future-010", "es": "Voy a llamar al proveedor mañana.", "accepted": ["I'm going to call the supplier tomorrow."], "hint": "supplier", "ruleShort": "proveedor = supplier (no provider).", "tag": "16"}, {"id": "continuous-future-011", "es": "Estoy tratando de dormir más.", "accepted": ["I'm trying to sleep more."], "hint": "trying", "ruleShort": "try + to + verbo.", "tag": "1"}, {"id": "continuous-future-012", "es": "Estoy pensando en cambiar de carro.", "accepted": ["I'm thinking about changing my car.", "I'm thinking about changing cars.", "I'm thinking about getting a new car."], "hint": "thinking about", "ruleShort": "think about + -ing: changing.", "tag": "8"}, {"id": "continuous-future-013", "es": "Él está esperando afuera.", "accepted": ["He's waiting outside."], "hint": "waiting", "ruleShort": "he is + -ing.", "tag": "22"}, {"id": "continuous-future-014", "es": "Vamos a necesitar más malta.", "accepted": ["We're going to need more malt."], "hint": "need", "ruleShort": "we're going to + verbo.", "tag": "23"}, {"id": "continuous-future-015", "es": "¿Vas a quedarte o vas a irte?", "accepted": ["Are you going to stay or leave?", "Are you going to stay or go?"], "hint": "leave", "ruleShort": "irse = leave.", "tag": "16"}, {"id": "continuous-future-016", "es": "Estoy leyendo un libro muy bueno.", "accepted": ["I'm reading a very good book."], "hint": "reading", "ruleShort": "am + -ing. El adjetivo va antes del libro.", "tag": "22"}, {"id": "continuous-future-017", "es": "No voy a tomar café después de las dos.", "accepted": ["I'm not going to drink coffee after two.", "I'm not going to have coffee after two."], "hint": "drink", "ruleShort": "tomar (bebida) = drink / have.", "tag": "23"}, {"id": "continuous-future-018", "es": "Estamos creciendo mucho como empresa.", "accepted": ["We're growing a lot as a company."], "hint": "as a company", "ruleShort": "como (en calidad de) = as a.", "tag": "5"}, {"id": "continuous-future-019", "es": "Estoy pensando en tomar clases de surf.", "accepted": ["I'm thinking about taking surfing classes.", "I'm thinking about taking surf lessons.", "I'm thinking about taking surfing lessons.", "I'm thinking about taking surf classes."], "hint": "taking", "ruleShort": "think about + -ing: taking.", "tag": "8"}, {"id": "continuous-future-020", "es": "Voy a intentar hablar solo en inglés hoy.", "accepted": ["I'm going to try to speak only English today.", "I'm going to try to speak only in English today."], "hint": "try to", "ruleShort": "going to + try + to + verbo.", "tag": "23"}]}, {"id": "impersonal-se", "name": "«Se / uno» → sujeto explícito", "level": 3, "order": 4, "rule": "El inglés casi siempre necesita sujeto explícito. «se / uno» → you / we / they / afirmación directa / pasiva.", "relatedTo": ["modals", "present-simple"], "items": [{"id": "impersonal-se-001", "es": "Se dice que el café de Costa Rica es el mejor del mundo.", "accepted": ["They say Costa Rican coffee is the best in the world.", "People say Costa Rican coffee is the best in the world.", "They say that Costa Rican coffee is the best in the world."], "hint": "They say", "ruleShort": "se dice = they say / people say. the best in the world.", "tag": "21"}, {"id": "impersonal-se-002", "es": "Uno nunca sabe qué va a pasar mañana.", "accepted": ["You never know what will happen tomorrow.", "You never know what's going to happen tomorrow."], "hint": "You never", "ruleShort": "uno = you.", "tag": "21"}, {"id": "impersonal-se-003", "es": "Aquí se trabaja mucho, pero también se disfruta la vida.", "accepted": ["Here we work a lot, but we also enjoy life.", "We work a lot here, but we also enjoy life."], "hint": "we", "ruleShort": "se (nosotros) = we. life sin «the».", "tag": "21"}, {"id": "impersonal-se-004", "es": "Se necesita paciencia para aprender un idioma.", "accepted": ["You need patience to learn a language."], "hint": "You need", "ruleShort": "se necesita = you need. para + verbo = to.", "tag": "1"}, {"id": "impersonal-se-005", "es": "Dicen que va a subir el precio de la gasolina.", "accepted": ["They say gas prices are going to go up.", "They say the price of gas is going to go up."], "hint": "go up", "ruleShort": "dicen = they say. subir (un precio) = go up.", "tag": "21"}, {"id": "impersonal-se-006", "es": "Cuando uno llega a Nápoles por primera vez, se siente abrumado.", "accepted": ["When you arrive in Naples for the first time, you feel overwhelmed."], "hint": "arrive in", "ruleShort": "llegar a una ciudad = arrive in.", "tag": "6"}, {"id": "impersonal-se-007", "es": "En mi empresa se fabrican cervezas artesanales.", "accepted": ["In my brewery, we brew craft beers.", "At my brewery, we brew craft beer.", "In my brewery, we brew craft beer.", "At my brewery, we brew craft beers."], "hint": "brew", "ruleShort": "se fabrican (nosotros) = we brew / we make.", "tag": "21"}, {"id": "impersonal-se-008", "es": "No se puede fumar adentro del restaurante.", "accepted": ["You can't smoke inside the restaurant."], "hint": "can't", "ruleShort": "no se puede = you can't.", "tag": "21"}, {"id": "impersonal-se-009", "es": "Se come muy bien en Costa Rica.", "accepted": ["You eat very well in Costa Rica.", "The food is very good in Costa Rica."], "hint": "well", "ruleShort": "comer bien = eat well (adverbio, no good).", "tag": "12"}, {"id": "impersonal-se-010", "es": "Uno se acostumbra al calor después de un tiempo.", "accepted": ["You get used to the heat after a while."], "hint": "get used to", "ruleShort": "acostumbrarse a = get used to.", "tag": "21"}, {"id": "impersonal-se-011", "es": "Se canceló la reunión de mañana.", "accepted": ["Tomorrow's meeting was canceled.", "Tomorrow's meeting was cancelled.", "Tomorrow's meeting has been canceled."], "hint": "canceled", "ruleShort": "Pasiva: was + participio. de mañana = tomorrow's.", "tag": "32"}, {"id": "impersonal-se-012", "es": "Aquí no se acepta efectivo, solo tarjeta.", "accepted": ["We don't accept cash, only card.", "We don't accept cash here, only cards.", "We don't accept cash here, only card."], "hint": "accept", "ruleShort": "aceptar pagos = accept (no receive).", "tag": "16"}, {"id": "impersonal-se-013", "es": "Cuando uno tiene hijos, se cambia la perspectiva.", "accepted": ["When you have children, your perspective changes.", "When you have kids, your perspective changes."], "hint": "changes", "ruleShort": "your perspective changes: tercera persona con -s.", "tag": "2"}, {"id": "impersonal-se-014", "es": "Se venden muchas cervezas artesanales en Tamarindo.", "accepted": ["There are a lot of craft beers in Tamarindo.", "They sell a lot of craft beers in Tamarindo.", "A lot of craft beers are sold in Tamarindo."], "hint": "a lot of", "ruleShort": "a lot of + sustantivo (siempre con «of»).", "tag": "14"}, {"id": "impersonal-se-015", "es": "Dicen que el ejercicio mejora la memoria.", "accepted": ["Exercise improves memory.", "They say exercise improves memory.", "They say that exercise improves memory."], "hint": "improves", "ruleShort": "Conceptos generales sin «the»; improves con -s.", "tag": "5"}, {"id": "impersonal-se-016", "es": "No se puede estacionar aquí.", "accepted": ["You can't park here."], "hint": "park", "ruleShort": "no se puede = you can't.", "tag": "21"}, {"id": "impersonal-se-017", "es": "Uno se da cuenta con el tiempo de lo que importa.", "accepted": ["You realize what matters over time.", "Over time, you realize what matters."], "hint": "realize", "ruleShort": "darse cuenta = realize. what matters (con -s).", "tag": "2"}, {"id": "impersonal-se-018", "es": "Se abre la fábrica a las 6 de la mañana.", "accepted": ["The brewery opens at 6 AM.", "The brewery opens at 6 in the morning.", "The factory opens at 6 AM.", "The factory opens at 6 in the morning."], "hint": "opens", "ruleShort": "Sujeto explícito + opens (-s). La hora con «at».", "tag": "2"}, {"id": "impersonal-se-019", "es": "Se nota que has estado entrenando.", "accepted": ["You can tell you've been training.", "You can tell that you've been training."], "hint": "can tell", "ruleShort": "se nota = you can tell. has estado + -ndo = have been + -ing.", "tag": "10"}, {"id": "impersonal-se-020", "es": "Uno no puede controlar todo en la vida.", "accepted": ["You can't control everything in life."], "hint": "control", "ruleShort": "uno no puede = you can't. in life, sin «the».", "tag": "5"}, {"id": "impersonal-se-021", "es": "Aquí se respira aire puro.", "accepted": ["You can breathe fresh air here.", "Here you can breathe fresh air.", "You breathe fresh air here."], "hint": "breathe", "ruleShort": "aire puro = fresh air.", "tag": "21"}, {"id": "impersonal-se-022", "es": "Cuando uno emprende, se aprende a fallar.", "accepted": ["When you run a business, you learn to fail.", "When you start a business, you learn to fail."], "hint": "run a business", "ruleShort": "emprender = run / start a business. learn + to.", "tag": "1"}, {"id": "impersonal-se-023", "es": "Se me olvidó comprar la malta.", "accepted": ["I forgot to buy the malt."], "hint": "forgot", "ruleShort": "se me olvidó = I forgot (sujeto: I).", "tag": "11"}, {"id": "impersonal-se-024", "es": "Se tarda como una hora en llegar a Tamarindo.", "accepted": ["It takes about an hour to get to Tamarindo."], "hint": "takes", "ruleShort": "tardar = it takes + tiempo + to. an hour (h muda).", "tag": "29"}, {"id": "impersonal-se-025", "es": "Dicen que dormir bien es más importante que el ejercicio.", "accepted": ["They say sleeping well is more important than exercise.", "They say sleeping well is more important than exercising.", "They say that sleeping well is more important than exercise."], "hint": "sleeping", "ruleShort": "Verbo como sujeto = -ing: sleeping well.", "tag": "13"}, {"id": "impersonal-se-026", "es": "Uno se siente orgulloso cuando la cerveza queda bien.", "accepted": ["You feel proud when the beer turns out well.", "You feel proud when the beer turns out good."], "hint": "turns out", "ruleShort": "quedar bien (resultado) = turn out well.", "tag": "12"}, {"id": "impersonal-se-027", "es": "No se permiten mascotas en el restaurante.", "accepted": ["Pets are not allowed in the restaurant.", "Pets aren't allowed in the restaurant.", "No pets allowed in the restaurant."], "hint": "allowed", "ruleShort": "Pasiva: are not allowed.", "tag": "32"}]}, {"id": "modals", "name": "Modales", "level": 4, "order": 5, "rule": "can + verbo sin «to». «tanto» = so much. «alguien más» = someone else. «yo invito» = it's on me.", "relatedTo": ["impersonal-se", "continuous-future"], "items": [{"id": "modals-001", "es": "Tengo que levantarme temprano mañana.", "accepted": ["I have to wake up early tomorrow.", "I have to get up early tomorrow."], "hint": "have to", "ruleShort": "tener que = have to.", "tag": "25"}, {"id": "modals-002", "es": "No tienes que pagar, yo invito.", "accepted": ["You don't have to pay, it's on me."], "hint": "it's on me", "ruleShort": "yo invito = it's on me. no tener que = don't have to.", "tag": "16"}, {"id": "modals-003", "es": "Necesito aprender a manejar mis tiempos.", "accepted": ["I need to learn to manage my time.", "I need to learn how to manage my time."], "hint": "manage", "ruleShort": "need to + verbo; learn to + verbo. time no lleva -s.", "tag": "1"}, {"id": "modals-004", "es": "Puedo cocinar pero no muy bien.", "accepted": ["I can cook but not very well."], "hint": "well", "ruleShort": "can + verbo sin «to». bien = well.", "tag": "24"}, {"id": "modals-005", "es": "Ella puede hablar tres idiomas.", "accepted": ["She can speak three languages."], "hint": "can speak", "ruleShort": "can no lleva -s: she can speak.", "tag": "24"}, {"id": "modals-006", "es": "No puedo dormir cuando hace calor.", "accepted": ["I can't sleep when it's hot."], "hint": "it's hot", "ruleShort": "Clima con «it»: when it's hot.", "tag": "18"}, {"id": "modals-007", "es": "Deberías probar mi cerveza.", "accepted": ["You should try my beer."], "hint": "should", "ruleShort": "deberías = should + verbo.", "tag": "24"}, {"id": "modals-008", "es": "No deberías tomar tanto café.", "accepted": ["You shouldn't drink so much coffee.", "You shouldn't drink that much coffee.", "You shouldn't drink too much coffee."], "hint": "so much", "ruleShort": "tanto + incontable = so much.", "tag": "15"}, {"id": "modals-009", "es": "¿Puedes hablar más despacio?", "accepted": ["Can you speak more slowly?", "Could you speak more slowly?"], "hint": "slowly", "ruleShort": "despacio = slowly (adverbio).", "tag": "12"}, {"id": "modals-010", "es": "Tengo que ir al banco antes de que cierre.", "accepted": ["I have to go to the bank before it closes."], "hint": "closes", "ruleShort": "it + verbo con -s: closes.", "tag": "2"}, {"id": "modals-011", "es": "No necesitas experiencia para este trabajo.", "accepted": ["You don't need experience for this job.", "You don't need any experience for this job."], "hint": "experience", "ruleShort": "for + sustantivo: for this job.", "tag": "1"}, {"id": "modals-012", "es": "Podemos reunirnos el viernes.", "accepted": ["We can meet on Friday."], "hint": "on Friday", "ruleShort": "Días de la semana con «on».", "tag": "6"}, {"id": "modals-013", "es": "Deberías hacer ejercicio más seguido.", "accepted": ["You should exercise more often.", "You should work out more often."], "hint": "often", "ruleShort": "más seguido = more often.", "tag": "24"}, {"id": "modals-014", "es": "No puedo encontrar un buen proveedor.", "accepted": ["I can't find a good supplier."], "hint": "supplier", "ruleShort": "proveedor = supplier.", "tag": "16"}, {"id": "modals-015", "es": "Tienes que ver esa película.", "accepted": ["You have to watch that movie.", "You have to see that movie."], "hint": "watch", "ruleShort": "tener que = have to.", "tag": "25"}, {"id": "modals-016", "es": "Necesitamos contratar a alguien más.", "accepted": ["We need to hire someone else."], "hint": "someone else", "ruleShort": "alguien más = someone else.", "tag": "16"}, {"id": "modals-017", "es": "¿Puedo sentarme aquí?", "accepted": ["Can I sit here?", "May I sit here?"], "hint": "sit", "ruleShort": "can + verbo sin «to».", "tag": "24"}, {"id": "modals-018", "es": "No tienes que venir si no quieres.", "accepted": ["You don't have to come if you don't want to."], "hint": "want to", "ruleShort": "Se cierra con «to»: if you don't want to.", "tag": "25"}, {"id": "modals-019", "es": "Quiero poder hablar inglés sin pensar.", "accepted": ["I want to be able to speak English without thinking."], "hint": "be able to", "ruleShort": "poder (después de otro verbo) = be able to. without + -ing.", "tag": "24"}, {"id": "modals-020", "es": "Debería dormir más pero no puedo.", "accepted": ["I should sleep more but I can't."], "hint": "should", "ruleShort": "should + verbo. Cierre corto: but I can't.", "tag": "24"}]}, {"id": "opinion", "name": "Opinar", "level": 5, "order": 11, "rule": "I think / I don't think + sujeto. «me parece bien» = sounds good. Verbo como sujeto = -ing.", "relatedTo": ["comp-short", "comp-long"], "items": [{"id": "opinion-001", "es": "Creo que tienes razón.", "accepted": ["I think you're right.", "I think you are right."], "hint": "right", "ruleShort": "tener razón = be right.", "tag": "36"}, {"id": "opinion-002", "es": "No creo que sea buena idea.", "accepted": ["I don't think it's a good idea."], "hint": "don't think", "ruleShort": "No creo que… = I don't think + sujeto. a good idea.", "tag": "36"}, {"id": "opinion-003", "es": "En mi opinión, es demasiado caro.", "accepted": ["In my opinion, it's too expensive."], "hint": "too", "ruleShort": "demasiado + adjetivo = too expensive.", "tag": "15"}, {"id": "opinion-004", "es": "Me parece que él no viene.", "accepted": ["I don't think he's coming."], "hint": "coming", "ruleShort": "En inglés se niega el think: I don't think he's coming.", "tag": "36"}, {"id": "opinion-005", "es": "Es más fácil de lo que pensé.", "accepted": ["It's easier than I thought."], "hint": "easier", "ruleShort": "de lo que pensé = than I thought. easy → easier.", "tag": "27"}, {"id": "opinion-006", "es": "Prefiero quedarme en casa.", "accepted": ["I prefer to stay at home.", "I prefer to stay home.", "I'd rather stay home.", "I'd rather stay at home."], "hint": "at home", "ruleShort": "en casa = at home.", "tag": "6"}, {"id": "opinion-007", "es": "Creo que necesitamos más tiempo.", "accepted": ["I think we need more time."], "hint": "need", "ruleShort": "I think + sujeto + verbo.", "tag": "36"}, {"id": "opinion-008", "es": "No creo que funcione.", "accepted": ["I don't think it will work.", "I don't think it's going to work.", "I don't think it'll work."], "hint": "work", "ruleShort": "funcionar = work. I don't think it will work.", "tag": "36"}, {"id": "opinion-009", "es": "Me parece bien.", "accepted": ["Sounds good.", "That sounds good.", "Sounds good to me."], "hint": "Sounds", "ruleShort": "me parece bien = sounds good.", "tag": "36"}, {"id": "opinion-010", "es": "Es más difícil hablar que escribir.", "accepted": ["Speaking is harder than writing.", "Speaking is more difficult than writing."], "hint": "Speaking", "ruleShort": "Verbo como sujeto = -ing: Speaking is harder.", "tag": "13"}, {"id": "opinion-011", "es": "Para mí, la familia es lo más importante.", "accepted": ["For me, family is the most important thing."], "hint": "thing", "ruleShort": "lo más importante = the most important thing. family sin «the».", "tag": "5"}, {"id": "opinion-012", "es": "Me parece caro para lo que es.", "accepted": ["It seems expensive for what it is."], "hint": "seems", "ruleShort": "me parece = it seems.", "tag": "36"}, {"id": "opinion-013", "es": "Prefiero el calor al frío.", "accepted": ["I prefer the heat to the cold.", "I prefer hot weather to cold weather."], "hint": "to", "ruleShort": "prefer A to B.", "tag": "36"}]}, {"id": "past-simple", "name": "Pasado simple", "level": 2, "order": 2, "rule": "Pasado: regulares -ed, irregulares memorizados. «anoche» = last night. «para + verbo» = to.", "relatedTo": ["present-simple", "continuous-future"], "items": [{"id": "past-simple-001", "es": "Ayer fui al gimnasio.", "accepted": ["Yesterday I went to the gym.", "I went to the gym yesterday."], "hint": "went", "ruleShort": "go → went (irregular).", "tag": "11"}, {"id": "past-simple-002", "es": "Comí pizza anoche.", "accepted": ["I ate pizza last night."], "hint": "ate", "ruleShort": "eat → ate. anoche = last night.", "tag": "20"}, {"id": "past-simple-003", "es": "No dormí bien.", "accepted": ["I didn't sleep well."], "hint": "didn't", "ruleShort": "Negativo pasado: didn't + verbo base (no «slept»).", "tag": "26"}, {"id": "past-simple-004", "es": "Ella me llamó esta mañana.", "accepted": ["She called me this morning."], "hint": "called", "ruleShort": "call → called. El pronombre va después del verbo.", "tag": "35"}, {"id": "past-simple-005", "es": "Compré una cerveza nueva para probar.", "accepted": ["I bought a new beer to try."], "hint": "bought", "ruleShort": "buy → bought. para + verbo = to.", "tag": "1"}, {"id": "past-simple-006", "es": "Llegamos tarde a la reunión.", "accepted": ["We arrived late to the meeting.", "We arrived late for the meeting.", "We were late for the meeting.", "We were late to the meeting."], "hint": "arrived", "ruleShort": "arrive → arrived. llegar tarde a = late to / late for.", "tag": "35"}, {"id": "past-simple-007", "es": "No pude ir al trabajo.", "accepted": ["I couldn't go to work.", "I wasn't able to go to work."], "hint": "couldn't", "ruleShort": "No pude = couldn't. go to work (sin «the»).", "tag": "24"}, {"id": "past-simple-008", "es": "¿Fuiste al doctor?", "accepted": ["Did you go to the doctor?"], "hint": "Did", "ruleShort": "Pregunta pasado: Did + verbo base (go, no went).", "tag": "26"}, {"id": "past-simple-009", "es": "Llovió todo el día.", "accepted": ["It rained all day."], "hint": "rained", "ruleShort": "Clima con «it»: it rained.", "tag": "18"}, {"id": "past-simple-010", "es": "Cociné para mi familia.", "accepted": ["I cooked for my family."], "hint": "cooked", "ruleShort": "for + sustantivo o persona (no + verbo).", "tag": "1"}, {"id": "past-simple-011", "es": "Vi una película muy buena.", "accepted": ["I saw a very good movie.", "I watched a very good movie."], "hint": "saw", "ruleShort": "see → saw. El adjetivo va antes: a good movie.", "tag": "11"}, {"id": "past-simple-012", "es": "No encontré mis llaves.", "accepted": ["I couldn't find my keys.", "I didn't find my keys."], "hint": "find", "ruleShort": "Negativo pasado: didn't / couldn't + verbo base.", "tag": "26"}, {"id": "past-simple-013", "es": "Él me dijo algo interesante.", "accepted": ["He told me something interesting."], "hint": "told", "ruleShort": "tell → told (decirle algo a alguien).", "tag": "11"}, {"id": "past-simple-014", "es": "Manejé dos horas para llegar.", "accepted": ["I drove two hours to get there.", "I drove for two hours to get there."], "hint": "drove", "ruleShort": "drive → drove. para + verbo = to.", "tag": "11"}, {"id": "past-simple-015", "es": "Abrimos la cervecería en 2019.", "accepted": ["We opened the brewery in 2019."], "hint": "in 2019", "ruleShort": "Años con «in»: in 2019.", "tag": "6"}, {"id": "past-simple-016", "es": "¿Qué hiciste ayer?", "accepted": ["What did you do yesterday?"], "hint": "did", "ruleShort": "What did you + verbo base?", "tag": "26"}, {"id": "past-simple-017", "es": "Tomé demasiado café.", "accepted": ["I drank too much coffee.", "I had too much coffee."], "hint": "drank", "ruleShort": "drink → drank. demasiado + incontable = too much.", "tag": "15"}, {"id": "past-simple-018", "es": "Me desperté a las cinco.", "accepted": ["I woke up at five."], "hint": "woke up", "ruleShort": "wake up → woke up. La hora con «at».", "tag": "11"}, {"id": "past-simple-019", "es": "Hablé con mi mamá por teléfono.", "accepted": ["I talked to my mom on the phone.", "I spoke to my mom on the phone.", "I talked with my mom on the phone.", "I spoke with my mom on the phone."], "hint": "on the phone", "ruleShort": "por teléfono = on the phone.", "tag": "6"}, {"id": "past-simple-020", "es": "No tuve tiempo de hacer ejercicio.", "accepted": ["I didn't have time to exercise.", "I didn't have time to work out."], "hint": "to exercise", "ruleShort": "time + to + verbo (no «of»).", "tag": "1"}]}, {"id": "present-simple", "name": "Presente simple", "level": 1, "order": 1, "rule": "Tercera persona (he/she/it) lleva -s. Idiomas y conceptos generales sin «the».", "relatedTo": ["continuous-future", "past-simple"], "items": [{"id": "present-simple-001", "es": "Yo trabajo desde la casa.", "accepted": ["I work from home."], "hint": "from home", "ruleShort": "desde la casa = from home (sin «the»).", "tag": "6"}, {"id": "present-simple-002", "es": "No hablo inglés muy bien.", "accepted": ["I don't speak English well.", "I don't speak English very well."], "hint": "speak", "ruleShort": "Negativo: don't + verbo. Idiomas sin «the».", "tag": "26"}, {"id": "present-simple-003", "es": "¿Dónde está el baño?", "accepted": ["Where is the restroom?", "Where is the bathroom?"], "hint": "restroom", "ruleShort": "Where is + sujeto? (baño en un lugar público = restroom).", "tag": "26"}, {"id": "present-simple-004", "es": "Quiero una cerveza fría.", "accepted": ["I'd like a cold beer.", "I want a cold beer."], "hint": "I'd like", "ruleShort": "Para pedir: I'd like. El adjetivo va antes: a cold beer.", "tag": "33"}, {"id": "present-simple-005", "es": "Ella no está aquí.", "accepted": ["She's not here.", "She isn't here."], "hint": "isn't", "ruleShort": "estar = be: she is / she isn't.", "tag": "34"}, {"id": "present-simple-006", "es": "¿Cuánto cuesta esto?", "accepted": ["How much is it?", "How much is this?", "How much does this cost?", "How much does it cost?"], "hint": "How much", "ruleShort": "Precio: How much is it? / How much does it cost?", "tag": "26"}, {"id": "present-simple-007", "es": "Necesito agua.", "accepted": ["I need water."], "hint": "need", "ruleShort": "Sustantivo general sin artículo: water.", "tag": "5"}, {"id": "present-simple-008", "es": "No entiendo.", "accepted": ["I don't understand."], "hint": "understand", "ruleShort": "Sujeto obligatorio: I don't understand.", "tag": "9"}, {"id": "present-simple-009", "es": "Él vive en San José.", "accepted": ["He lives in San José."], "hint": "lives", "ruleShort": "he + verbo con -s: lives.", "tag": "2"}, {"id": "present-simple-010", "es": "Me gusta el café.", "accepted": ["I like coffee."], "hint": "like", "ruleShort": "gustar → I like. Café en general, sin «the».", "tag": "30"}, {"id": "present-simple-011", "es": "No me gusta el frío.", "accepted": ["I don't like cold weather.", "I don't like the cold."], "hint": "cold weather", "ruleShort": "el frío (clima) = cold weather / the cold.", "tag": "30"}, {"id": "present-simple-012", "es": "¿Tú hablas español?", "accepted": ["Do you speak Spanish?"], "hint": "Do", "ruleShort": "Pregunta en presente: Do + sujeto + verbo.", "tag": "26"}, {"id": "present-simple-013", "es": "Estoy cansado.", "accepted": ["I'm tired."], "hint": "tired", "ruleShort": "estar + adjetivo = be + adjetivo.", "tag": "34"}, {"id": "present-simple-014", "es": "Tengo hambre.", "accepted": ["I'm hungry."], "hint": "hungry", "ruleShort": "tener hambre = be hungry (no have hunger).", "tag": "31"}, {"id": "present-simple-015", "es": "¿Qué hora es?", "accepted": ["What time is it?"], "hint": "time", "ruleShort": "La hora siempre con «it»: What time is it?", "tag": "9"}, {"id": "present-simple-016", "es": "Hoy hace mucho calor.", "accepted": ["Today it's very hot.", "It's very hot today."], "hint": "it's", "ruleShort": "Clima con «it»: it's hot.", "tag": "18"}, {"id": "present-simple-017", "es": "Ella es mi hermana.", "accepted": ["She's my sister."], "hint": "sister", "ruleShort": "ser = be: she is my sister.", "tag": "34"}, {"id": "present-simple-018", "es": "No tengo tiempo.", "accepted": ["I don't have time.", "I don't have any time."], "hint": "don't have", "ruleShort": "Negativo de have: I don't have.", "tag": "26"}, {"id": "present-simple-019", "es": "Quiero ir a la playa.", "accepted": ["I want to go to the beach."], "hint": "to go", "ruleShort": "want + to + verbo. ir a = go to.", "tag": "1"}, {"id": "present-simple-020", "es": "¿Puedes ayudarme?", "accepted": ["Can you help me?"], "hint": "help", "ruleShort": "can + verbo sin «to»; el pronombre va después: help me.", "tag": "24"}]}, {"id": "superlative-long", "name": "Superlativo — adjetivos largos", "level": 5, "order": 9, "rule": "the most ___ + sustantivo. «que he probado» = I've ever tried.", "relatedTo": ["superlative-short", "comp-long"], "items": [{"id": "superlative-long-001", "es": "Es la cerveza más interesante que he probado.", "accepted": ["It's the most interesting beer I've ever tried.", "It's the most interesting beer I have ever tried."], "hint": "ever", "ruleShort": "que he probado = I've ever tried.", "tag": "10"}, {"id": "superlative-long-002", "es": "Es el idioma más complicado del mundo.", "accepted": ["It's the most complicated language in the world."], "hint": "in the world", "ruleShort": "del mundo = in the world.", "tag": "6"}, {"id": "superlative-long-003", "es": "Ella es la persona más organizada que conozco.", "accepted": ["She's the most organized person I know."], "hint": "most organized", "ruleShort": "the most + adjetivo + sustantivo.", "tag": "4"}, {"id": "superlative-long-004", "es": "Es el problema más importante ahora mismo.", "accepted": ["It's the most important problem right now."], "hint": "right now", "ruleShort": "ahora mismo = right now.", "tag": "4"}, {"id": "superlative-long-005", "es": "Fue la reunión más aburrida del año.", "accepted": ["It was the most boring meeting of the year."], "hint": "most boring", "ruleShort": "the most boring meeting of the year.", "tag": "4"}, {"id": "superlative-long-006", "es": "Es el lugar más bonito que he visitado.", "accepted": ["It's the most beautiful place I've ever visited.", "It's the most beautiful place I've ever been."], "hint": "ever visited", "ruleShort": "que he visitado = I've ever visited.", "tag": "10"}, {"id": "superlative-long-007", "es": "Es la ciudad más interesante de Italia.", "accepted": ["It's the most interesting city in Italy."], "hint": "most interesting", "ruleShort": "the most interesting city in + lugar.", "tag": "4"}, {"id": "superlative-long-008", "es": "Fue la decisión más difícil de mi vida.", "accepted": ["It was the most difficult decision of my life.", "It was the hardest decision of my life."], "hint": "most difficult", "ruleShort": "the most difficult decision of my life.", "tag": "4"}, {"id": "superlative-long-009", "es": "Es el restaurante más caro de Tamarindo.", "accepted": ["It's the most expensive restaurant in Tamarindo."], "hint": "most expensive", "ruleShort": "the most expensive + sustantivo.", "tag": "4"}, {"id": "superlative-long-010", "es": "Mi papá es la persona más inteligente que conozco.", "accepted": ["My dad is the smartest person I know.", "My dad is the most intelligent person I know.", "My father is the smartest person I know."], "hint": "smartest", "ruleShort": "que conozco = I know. smart → smartest.", "tag": "4"}]}, {"id": "superlative-short", "name": "Superlativo — adjetivos cortos", "level": 5, "order": 8, "rule": "el más ___ = the ___est + sustantivo. in + lugar / of + tiempo / on + superficie.", "relatedTo": ["superlative-long", "comp-short"], "items": [{"id": "superlative-short-001", "es": "Es la cerveza más fría del menú.", "accepted": ["It's the coldest beer on the menu."], "hint": "coldest", "ruleShort": "the coldest. del menú = on the menu.", "tag": "6"}, {"id": "superlative-short-002", "es": "Es el bar más grande de Tamarindo.", "accepted": ["It's the biggest bar in Tamarindo."], "hint": "biggest", "ruleShort": "the biggest + sustantivo + in + lugar.", "tag": "4"}, {"id": "superlative-short-003", "es": "Fue el día más largo de la semana.", "accepted": ["It was the longest day of the week."], "hint": "longest", "ruleShort": "the longest day of + tiempo.", "tag": "6"}, {"id": "superlative-short-004", "es": "Ella es la más rápida del equipo.", "accepted": ["She's the fastest on the team.", "She's the fastest one on the team."], "hint": "fastest", "ruleShort": "del equipo = on the team.", "tag": "6"}, {"id": "superlative-short-005", "es": "Es la calle más ancha de la ciudad.", "accepted": ["It's the widest street in the city."], "hint": "widest", "ruleShort": "the widest street in the city.", "tag": "4"}, {"id": "superlative-short-006", "es": "Es el mejor restaurante de Tamarindo.", "accepted": ["It's the best restaurant in Tamarindo."], "hint": "best", "ruleShort": "good → better → best.", "tag": "3"}, {"id": "superlative-short-007", "es": "Es la peor carretera del país.", "accepted": ["It's the worst road in the country."], "hint": "worst", "ruleShort": "bad → worse → worst.", "tag": "3"}, {"id": "superlative-short-008", "es": "Es el día más caliente del año.", "accepted": ["It's the hottest day of the year."], "hint": "hottest", "ruleShort": "the hottest day of the year.", "tag": "4"}, {"id": "superlative-short-009", "es": "Es la playa más bonita de Guanacaste.", "accepted": ["It's the prettiest beach in Guanacaste.", "It's the most beautiful beach in Guanacaste.", "It's the nicest beach in Guanacaste."], "hint": "prettiest", "ruleShort": "pretty → prettiest (la -y cambia a -i).", "tag": "4"}, {"id": "superlative-short-010", "es": "Fue la noche más fría del mes.", "accepted": ["It was the coldest night of the month."], "hint": "coldest", "ruleShort": "the coldest night of + tiempo.", "tag": "4"}]}], "meta": {"rules": {"1": "to vs for: «para + verbo» = to (to learn). «for» va con sustantivos.", "2": "Tercera persona: he/she/it + verbo con -s (he lives, it closes, what matters).", "3": "Comparativo vs superlativo: -er than (dos cosas) vs the -est (el mejor de todos).", "4": "Orden del superlativo: the + (most) + adjetivo + sustantivo (the hottest day).", "5": "Artículos: idiomas y conceptos generales sin «the» (Italian, life, coffee).", "6": "Preposiciones fijas: at home, arrive in, in 2019, on the menu, on the phone, of the week.", "7": "tan ___ como = as ___ as. Nunca «so ___ like».", "8": "pensar en + verbo = think about + -ing (thinking about buying).", "9": "Sujeto explícito obligatorio: el español lo omite, el inglés no (It's…, I think…).", "10": "Present perfect: he hecho / he estado = have + participio (I've tried, you've been).", "11": "Pasado irregular: go→went, eat→ate, buy→bought, see→saw, tell→told, drive→drove.", "12": "Adjetivo vs adverbio: eat well (no good), speak slowly (no slow).", "13": "Verbo como sujeto = -ing (Speaking is hard, Sleeping well matters).", "14": "a lot of: siempre con «of» antes del sustantivo.", "15": "too much / so much con sustantivos; too solo con adjetivos (too expensive).", "16": "Falsos amigos y expresiones: supplier, accept, it's on me, leave, someone else.", "17": "Posesivo con 's: de ayer / de mi hermano = yesterday's / my brother's.", "18": "Clima y temperatura siempre con «it»: it's hot, it rained.", "19": "a / an: an antes de sonido vocal (an hour, an interesting idea).", "20": "anoche = last night (no yesterday night). last week / last year.", "21": "«se / uno / dicen» → sujeto explícito: you, we, they.", "22": "Presente continuo: am / is / are + verbo-ing.", "23": "Planes: be going to + verbo (I'm going to travel).", "24": "Modales (can, should, could) + verbo sin «to» y sin -s.", "25": "tener que = have to · no tener que = don't have to.", "26": "Preguntas y negativos con do / does / did + verbo base.", "27": "Comparativo corto: adjetivo + -er than (big → bigger, hot → hotter).", "28": "Comparativo largo: more + adjetivo + than (more interesting, more tired).", "29": "tardar = it takes + tiempo + to + verbo.", "30": "gustar = like, con «I» como sujeto (I like coffee).", "31": "tener hambre / sed / frío = be hungry / thirsty / cold.", "32": "Pasiva: be + participio (was canceled, are not allowed).", "33": "El adjetivo va antes del sustantivo (a cold beer, a new place).", "34": "ser y estar = be (I'm tired, she's my sister).", "35": "Pasado regular: verbo + -ed (called, arrived, cooked).", "36": "Opinar: I think / I don't think + sujeto + verbo. «me parece» = it seems / sounds."}, "seedVersion": 1}};
+const S = {
+  cfg:{key:"",model:"gemini-2.5-flash",lang:"en-US",autoCheck:true}, rec:null, listening:false, err:null,
+  loaded:{p:false,s:false,x:false,m:false},
+  patterns:{}, itemIdx:{}, meta:{rules:{}},
+  state:null, sessions:[], cur:null,
+  view:"home", drill:null, ui:{}, pending:0, toast:null
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const todayStr = () => new Date().toLocaleDateString("en-CA");
+const clone = o => o == null ? o : JSON.parse(JSON.stringify(o));
+
+/* ---------- estado ---------- */
+function blankState(){ return {studyDay:0,lastStudyDate:null,focusId:null,patterns:{},items:{}}; }
+function pst(pid){
+  const ps = S.state.patterns;
+  if(!ps[pid]) ps[pid] = {box:0,nextReviewDay:0,status:"new",recent:[],streak:[]};
+  return ps[pid];
+}
+function sortedPatterns(){ return Object.values(S.patterns).sort((a,b)=>(a.level-b.level)||((a.order??99)-(b.order??99))||a.name.localeCompare(b.name)); }
+function indexItems(){ S.itemIdx = {}; for(const p of Object.values(S.patterns)) for(const it of (p.items||[])) S.itemIdx[it.id] = {...it, patternId:p.id}; }
+function weakness(pid){
+  const p = pst(pid);
+  if(p.status==="new" || !p.recent.length) return 1;
+  let inc=0, alm=0, h=0;
+  for(const a of p.recent){ if(a.r==="incorrect") inc++; else if(a.r==="almost") alm++; if(a.h) h++; }
+  return (inc + alm*0.5 + h*0.3) / p.recent.length;
+}
+function accuracy(pid){ const r = pst(pid).recent; if(!r.length) return null; return r.filter(a=>a.r==="correct").length / r.length; }
+function isMastered(ps){ return ps.streak.length>=3 && new Set(ps.streak.map(s=>s.d)).size>=3 && ps.streak.some(s=>s.m); }
+
+function chooseFocus(){
+  const st = S.state, list = sortedPatterns();
+  if(!list.length) return null;
+  const f = st.focusId && S.patterns[st.focusId];
+  if(f && pst(f.id).status!=="mastered") return f.id;
+  const learning = list.filter(p=>pst(p.id).status==="learning").sort((a,b)=>weakness(b.id)-weakness(a.id));
+  if(learning.length) return learning[0].id;
+  const nw = list.find(p=>pst(p.id).status==="new");
+  if(nw) return nw.id;
+  return [...list].sort((a,b)=>weakness(b.id)-weakness(a.id))[0].id;
+}
+
+/* ---------- armado de sesión ---------- */
+function rankItem(it){
+  const s = S.state.items[it.id];
+  if(!s) return 0;
+  if(s.last==="incorrect") return 1;
+  if(s.last==="almost" || s.hint) return 2;
+  return 3;
+}
+function pickItems(pid, n, used){
+  const p = S.patterns[pid]; if(!p || !p.items?.length || n<=0) return [];
+  const order = p.items.map(it=>({it,r:rankItem(it),d:S.state.items[it.id]?.lastDay ?? -1,x:Math.random()}))
+    .sort((a,b)=>a.r-b.r || a.d-b.d || a.x-b.x).map(o=>o.it);
+  const out = [];
+  for(const it of order){ if(out.length>=n) break; if(!used.has(it.id)){ out.push(it); used.add(it.id); } }
+  let k = 0;
+  while(out.length<n && k<n*3){ const it = order[k % order.length]; if(out[out.length-1]?.id!==it.id) out.push(it); k++; }
+  return out;
+}
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function buildPlan(day){
+  const focus = chooseFocus(); if(!focus) return {focus:null,plan:[]};
+  const used = new Set();
+  const due = sortedPatterns().filter(p=>p.id!==focus && pst(p.id).status!=="new" && pst(p.id).nextReviewDay<=day)
+    .sort((a,b)=>pst(a.id).nextReviewDay-pst(b.id).nextReviewDay || weakness(b.id)-weakness(a.id));
+  const reviews = [];
+  for(let i=0; reviews.length<5 && due.length && i<40; i++){
+    const p = due[i % due.length];
+    const got = pickItems(p.id, 1, used).filter(it=>!reviews.some(r=>r.i===it.id));
+    if(got.length) reviews.push({i:got[0].id,p:p.id,k:"review"});
+  }
+  let pool = (S.patterns[focus].relatedTo||[]).filter(id=>S.patterns[id] && pst(id).status!=="new");
+  if(!pool.length) pool = sortedPatterns().filter(p=>p.id!==focus && pst(p.id).status!=="new").map(p=>p.id);
+  const mixedCount = pool.length ? 3 : 0;
+  const nFocus = SESSION_SIZE - reviews.length - mixedCount;
+  const focusItems = pickItems(focus, nFocus, used).map(it=>({i:it.id,p:focus,k:"focus"}));
+  const mixed = [];
+  if(mixedCount){
+    const f1 = pickItems(focus, 1, used)[0]; if(f1) mixed.push({i:f1.id,p:focus,k:"mixed"});
+    const ps = shuffle([...pool]);
+    for(let j=0; mixed.length<3 && j<6; j++){ const pid = ps[j % ps.length]; const it = pickItems(pid,1,used)[0]; if(it) mixed.push({i:it.id,p:pid,k:"mixed"}); }
+  }
+  return {focus, plan:[...focusItems, ...reviews, ...shuffle(mixed)]};
+}
+
+/* ---------- guardado (localStorage) ---------- */
+let saveTimer;
+function persist(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({v:1, patterns:S.patterns, meta:S.meta, state:S.state, sessions:S.sessions})); }
+    catch(e){ console.error(e); toast("No se pudo guardar en este navegador. Exporta un respaldo."); }
+  }, 150);
+}
+function saveState(){ persist(); }
+function saveSession(s){ const i = S.sessions.findIndex(x=>x.id===s.id); const snap = clone(s); if(i>=0) S.sessions[i] = snap; else S.sessions.unshift(snap); persist(); }
+function savePattern(p){ S.patterns[p.id] = clone(p); indexItems(); persist(); }
+function saveCfg(){ try{ localStorage.setItem(CFG_KEY, JSON.stringify(S.cfg)); }catch{} }
+
+/* ---------- comparación tolerante ---------- */
+const CONTR = {"i'm":"i am","you're":"you are","we're":"we are","they're":"they are","it's":"it is","he's":"he is","she's":"she is","that's":"that is","what's":"what is","there's":"there is","where's":"where is","who's":"who is","here's":"here is","let's":"let us","i've":"i have","you've":"you have","we've":"we have","they've":"they have","i'd":"i would","you'd":"you would","we'd":"we would","they'd":"they would","he'd":"he would","she'd":"she would","i'll":"i will","you'll":"you will","we'll":"we will","they'll":"they will","it'll":"it will","he'll":"he will","she'll":"she will","don't":"do not","doesn't":"does not","didn't":"did not","isn't":"is not","aren't":"are not","wasn't":"was not","weren't":"were not","can't":"can not","cannot":"can not","couldn't":"could not","shouldn't":"should not","wouldn't":"would not","won't":"will not","haven't":"have not","hasn't":"has not","hadn't":"had not"};
+for(const k of ["i'm","you're","they're","that's","what's","there's","where's","i've","you've","we've","they've","i'll","you'll","they'll","don't","doesn't","didn't","isn't","aren't","wasn't","weren't","can't","couldn't","shouldn't","wouldn't","haven't","hasn't"]) CONTR[k.replace("'","")] = CONTR[k];
+const NUMS = {"1":"one","2":"two","3":"three","4":"four","5":"five","6":"six","7":"seven","8":"eight","9":"nine","10":"ten","11":"eleven","12":"twelve"};
+const ALIAS = {"cancelled":"canceled","mum":"mom","ok":"okay","colour":"color","favourite":"favorite","organised":"organized","realise":"realize"};
+function baseNorm(s){
+  return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase()
+    .replace(/[’‘`´]/g,"'").replace(/\ba\.m\./g,"am").replace(/\bp\.m\./g,"pm")
+    .replace(/[^a-z0-9' ]+/g," ").replace(/\s+/g," ").trim();
+}
+function norm(s){
+  return baseNorm(s).split(" ").filter(Boolean)
+    .map(w=>w.replace(/^'+|'+$/g,"")).filter(Boolean)
+    .flatMap(w=>(CONTR[w] || NUMS[w] || ALIAS[w] || w).split(" "));
+}
+function lcs(a,b){
+  const m=a.length, n=b.length, d=Array.from({length:m+1},()=>new Array(n+1).fill(0));
+  for(let i=m-1;i>=0;i--) for(let j=n-1;j>=0;j--) d[i][j] = a[i]===b[j] ? d[i+1][j+1]+1 : Math.max(d[i+1][j], d[i][j+1]);
+  const ma=new Set(), mb=new Set(); let i=0,j=0;
+  while(i<m && j<n){ if(a[i]===b[j]){ ma.add(i); mb.add(j); i++; j++; } else if(d[i+1][j]>=d[i][j+1]) i++; else j++; }
+  return {len:d[0][0], ma, mb};
+}
+function gradeAnswer(ans, accepted){
+  const u = norm(ans);
+  if(!u.length) return {suggest:"incorrect", best:accepted[0], score:0};
+  let best = {score:-1, a:accepted[0]};
+  for(const a of accepted){
+    const t = norm(a);
+    const same = u.join(" ")===t.join(" ") || u.filter(w=>w!=="that").join(" ")===t.filter(w=>w!=="that").join(" ");
+    const score = same ? 1 : (2*lcs(u,t).len)/(u.length+t.length);
+    if(score>best.score) best = {score, a};
+  }
+  return {suggest: best.score===1 ? "correct" : best.score>=0.75 ? "almost" : "incorrect", best:best.a, score:best.score};
+}
+function diffHtml(ans, target){
+  const ua = String(ans).trim().split(/\s+/).filter(Boolean), ta = String(target).trim().split(/\s+/).filter(Boolean);
+  const key = w => norm(w).join(" ");
+  const r = lcs(ua.map(key), ta.map(key));
+  return {
+    user: ua.map((w,i)=> r.ma.has(i) ? esc(w) : `<span class="x">${esc(w)}</span>`).join(" "),
+    target: ta.map((w,j)=> r.mb.has(j) ? esc(w) : `<span class="miss">${esc(w)}</span>`).join(" ")
+  };
+}
+
+/* ---------- dictado (Web Speech API) ---------- */
+const MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+function toggleListening(){
+  if(!SR){ toast("Este navegador no tiene dictado. Usa Chrome o Safari."); return; }
+  if(S.listening){ try{ S.rec?.stop(); }catch{} return; }
+  const rec = new SR();
+  rec.lang = S.cfg.lang; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+  const base = ($("#ans")?.value || "").trim();
+  let finalText = "", gotFinal = false;
+  rec.onstart = () => { S.listening = true; micState(); };
+  rec.onresult = e => {
+    let interim = "";
+    for(let i=e.resultIndex; i<e.results.length; i++){ const t = e.results[i][0].transcript; if(e.results[i].isFinal){ finalText += t + " "; gotFinal = true; } else interim += t; }
+    const ta = $("#ans"); if(ta) ta.value = [base, (finalText + interim).replace(/\s+/g," ").trim()].filter(Boolean).join(" ");
+  };
+  rec.onerror = e => {
+    S.listening = false; micState();
+    if(e.error==="not-allowed" || e.error==="service-not-allowed") toast("Permite el micrófono en el navegador para dictar.");
+    else if(e.error==="no-speech") toast("No escuché nada. Toca Hablar y di la frase.");
+    else if(e.error!=="aborted") toast("Dictado: " + e.error);
+  };
+  rec.onend = () => {
+    S.listening = false; S.rec = null; micState();
+    const ta = $("#ans"); if(ta && S.drill) S.drill.answer = ta.value;
+    if(gotFinal && S.cfg.autoCheck && S.view==="drill" && S.drill?.phase==="answer") check();
+  };
+  S.rec = rec;
+  try{ rec.start(); }catch(err){ toast("No se pudo iniciar el dictado."); }
+}
+function micState(){ const b = $("#micbtn"); if(!b) return; b.classList.toggle("listening", S.listening); b.querySelector("span").textContent = S.listening ? "Escuchando…" : "Hablar"; }
+
+/* ---------- sesión ---------- */
+function unfinished(){ return S.sessions.find(s=>!s.done) || null; }
+async function startSession(){
+  const open = unfinished();
+  if(open) finalize(open, true);
+  const st = S.state, today = todayStr();
+  if(st.lastStudyDate!==today){ st.studyDay += 1; st.lastStudyDate = today; }
+  const {focus, plan} = buildPlan(st.studyDay);
+  if(!plan.length){ toast("No hay frases en el banco todavía."); return; }
+  st.focusId = focus;
+  S.cur = {id:"s"+Date.now().toString(36), day:st.studyDay, date:today, startedAt:Date.now(), focusId:focus, plan, attempts:[], done:false};
+  saveSession(S.cur); saveState();
+  openDrill();
+}
+function resumeSession(){ const s = unfinished(); if(!s) return; S.cur = clone(s); openDrill(); }
+function openDrill(){ S.view="drill"; S.drill={phase:"answer", hint:false, answer:"", res:null, confirmEnd:false, grading:false}; render(); focusAns(); }
+function focusAns(){ setTimeout(()=>{ const t=$("#ans"); if(t && matchMedia("(pointer:fine)").matches) t.focus(); }, 30); }
+function currentStep(){ return S.cur?.plan[S.cur.attempts.length]; }
+function check(){
+  const d = S.drill, step = currentStep(), it = S.itemIdx[step.i];
+  d.answer = $("#ans")?.value ?? d.answer;
+  const local = gradeAnswer(d.answer, it?.accepted?.length ? it.accepted : [""]);
+  d.res = {verdict:local.suggest, best:local.best, explanation:"", source:"local"};
+  d.phase = "feedback"; d.grading = false;
+  if(S.cfg.key && d.answer.trim()){ d.grading = true; askClaude(it, step, d); }
+  render();
+}
+async function gemini(prompt, signal){
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(S.cfg.model.trim()) + ":generateContent";
+  const res = await fetch(url, {method:"POST", signal, headers:{"Content-Type":"application/json", "x-goog-api-key":S.cfg.key.trim()},
+    body:JSON.stringify({contents:[{role:"user", parts:[{text:prompt}]}], generationConfig:{temperature:0.2, responseMimeType:"application/json"}})});
+  if(!res.ok){
+    let detail = ""; try{ detail = (await res.json())?.error?.message || ""; }catch{}
+    if(res.status===400 && /API key/i.test(detail) || res.status===403) throw new Error("La clave de Gemini no es válida. Revísala en Ajustes.");
+    if(res.status===404) throw new Error("Gemini no conoce el modelo «" + S.cfg.model + "». Cámbialo en Ajustes.");
+    if(res.status===429) throw new Error("Gemini llegó a su límite gratuito por ahora; se usa la comparación automática.");
+    throw new Error("Gemini: error " + res.status + (detail ? " · " + detail.slice(0,100) : ""));
+  }
+  const j = await res.json();
+  const text = (j.candidates?.[0]?.content?.parts || []).map(p=>p.text||"").join("");
+  const m = text.match(/\{[\s\S]*\}/);
+  if(!m) throw new Error("Gemini respondió sin JSON; se usa la comparación automática.");
+  return JSON.parse(m[0]);
+}
+async function askClaude(it, step, d){
+  const p = S.patterns[step.p];
+  const prompt = `Eres profesor de inglés de un hispanohablante adulto de nivel básico. Evalúa su traducción.
+Frase en español: «${it.es}»
+Respuesta del alumno: «${d.answer.trim()}»
+Respuestas de referencia:
+${it.accepted.map(a=>"- "+a).join("\n")}
+Patrón que se practica: ${p?.name||""}. Regla: ${p?.rule||""}
+
+Criterios:
+- "correct": inglés correcto y natural que dice lo mismo que la frase en español, aunque no coincida con las referencias. Ignora mayúsculas, puntuación, tildes y contracciones.
+- "almost": se entiende y la estructura general es la buena, pero hay un error de gramática, preposición, artículo, orden o una palabra mal elegida.
+- "incorrect": estructura equivocada, significado distinto, palabras en español, o no usa el patrón que la frase pide.
+No cuentes como error una variante válida (por ejemplo "that" opcional, "movie/film", "restroom/bathroom").
+
+Responde solo con este JSON:
+{"verdict":"correct|almost|incorrect","corrected":"la versión correcta más cercana a lo que escribió el alumno","explanation":"una sola oración en español, sencilla y concreta, que nombre el error principal y cómo se dice bien; cadena vacía si es correct","valid":true si la respuesta del alumno es correcta tal cual y no coincide con ninguna referencia, false en otro caso}`;
+  d.ctl = new AbortController();
+  try{
+    const r = await gemini(prompt, d.ctl.signal);
+    if(S.drill!==d || d.phase!=="feedback") return;
+    const v = ["correct","almost","incorrect"].includes(r?.verdict) ? r.verdict : d.res.verdict;
+    d.res = {verdict:v, best:String(r?.corrected || d.res.best).trim(), explanation:String(r?.explanation||"").trim(), source:"claude"};
+    if(v==="correct" && r?.valid===true && it.id && S.patterns[step.p]){
+      const same = a => norm(a).join(" ")===norm(d.answer).join(" ");
+      if(!it.accepted.some(same)){
+        const pp = clone(S.patterns[step.p]);
+        const ii = pp.items.find(x=>x.id===it.id);
+        if(ii){ ii.accepted.push(d.answer.trim().replace(/\s+/g," ")); savePattern(pp); d.res.learned = true; }
+      }
+    }
+  }catch(e){
+    if(e?.name==="AbortError") return;
+    toast(e instanceof TypeError ? "Sin conexión con Gemini; se usa la comparación automática." : (e?.message || "Gemini no respondió; se usa la comparación automática."));
+  }
+  d.grading = false;
+  if(S.drill===d) render();
+}
+function next(){
+  const d = S.drill;
+  if(d.grading){ d.ctl?.abort(); d.grading = false; }
+  grade(d.res.verdict);
+}
+function grade(r){
+  const d = S.drill, step = currentStep(), cur = S.cur;
+  const att = {i:step.i, p:step.p, k:step.k, r, h:d.hint, a:String(d.answer).slice(0,300), x:String(d.res?.explanation||"").slice(0,200), src:d.res?.source||"local", t:Date.now()};
+  cur.attempts.push(att);
+  const ps = pst(step.p);
+  if(ps.status==="new") ps.status = "learning";
+  ps.recent.push({r, h:d.hint}); if(ps.recent.length>10) ps.recent.shift();
+  if(r==="correct" && !d.hint){ ps.streak.push({d:cur.day, m:step.k==="mixed"}); if(ps.streak.length>40) ps.streak.shift(); }
+  else ps.streak = [];
+  if(ps.status!=="mastered" && isMastered(ps)){ ps.status="mastered"; ps.masteredAt=Date.now(); (cur.mastered ||= []).push(step.p); toast("¡Patrón dominado! " + (S.patterns[step.p]?.name||"")); }
+  const prev = S.state.items[step.i] || {seen:0};
+  S.state.items[step.i] = {seen:prev.seen+1, last:r, hint:d.hint, lastDay:cur.day};
+  if(cur.attempts.length>=cur.plan.length){ finalize(cur, false); return; }
+  saveSession(cur); saveState();
+  S.drill = {phase:"answer", hint:false, answer:"", res:null, confirmEnd:false, grading:false};
+  render(); focusAns(); window.scrollTo(0,0);
+}
+function finalize(sess, silent){
+  const by = {};
+  for(const a of sess.attempts){ const b = by[a.p] ||= {n:0,c:0,ci:0,x:0}; b.n++; if(a.r==="correct"){ b.c++; if(!a.h) b.ci++; } if(a.r==="incorrect") b.x++; }
+  const changes = [];
+  for(const [pid,b] of Object.entries(by)){
+    const ps = pst(pid), before = ps.box;
+    if(b.x/b.n >= 0.3) ps.box = Math.max(ps.box-2, 0);
+    else if(b.ci/b.n >= 0.8) ps.box = Math.min(ps.box+1, 6);
+    ps.nextReviewDay = sess.day + INTERVAL[ps.box];
+    changes.push({p:pid, before, after:ps.box, n:b.n, c:b.c});
+  }
+  sess.done = true; sess.endedAt = Date.now(); sess.changes = changes;
+  S.state.focusId = chooseFocus();
+  saveSession(sess); saveState();
+  if(!silent){ S.view="summary"; S.summary = clone(sess); S.cur=null; render(); window.scrollTo(0,0); }
+}
+
+/* ---------- utilidades de reporte ---------- */
+function allAttempts(){ return S.sessions.flatMap(s=>s.attempts||[]); }
+const WEEK = 7*864e5;
+function wkOf(list){ let inc=0,alm=0,h=0; for(const a of list){ if(a.r==="incorrect") inc++; else if(a.r==="almost") alm++; if(a.h) h++; } return list.length ? (inc+alm*0.5+h*0.3)/list.length : 0; }
+function weeklyWin(){
+  const now = Date.now(), cur = {}, prev = {};
+  for(const a of allAttempts()){ const age = now-a.t; const b = age<WEEK ? cur : age<2*WEEK ? prev : null; if(b) (b[a.p] ||= []).push(a); }
+  let best = null;
+  for(const pid of Object.keys(cur)){
+    if(!prev[pid] || cur[pid].length<3 || prev[pid].length<3) continue;
+    const d = wkOf(prev[pid]) - wkOf(cur[pid]);
+    if(d>0 && (!best || d>best.d)) best = {pid, d, before:accOf(prev[pid]), after:accOf(cur[pid])};
+  }
+  if(best) return {kind:"drop", ...best};
+  const m = Object.entries(S.state.patterns).filter(([,p])=>p.masteredAt && now-p.masteredAt<WEEK).sort((a,b)=>b[1].masteredAt-a[1].masteredAt)[0];
+  if(m) return {kind:"mastered", pid:m[0]};
+  const n = Object.values(cur).reduce((s,l)=>s+l.length,0);
+  return n ? {kind:"count", n} : null;
+}
+function accOf(list){ return list.length ? Math.round(100*list.filter(a=>a.r==="correct").length/list.length) : 0; }
+function winHtml(w){
+  if(!w) return "";
+  const name = pid => esc(S.patterns[pid]?.name || pid);
+  let body;
+  if(w.kind==="drop") body = `<h3>${name(w.pid)}</h3><p>Aciertos: <span class="mono">${w.before}% → ${w.after}%</span> frente a la semana pasada. Es el patrón que más mejoró.</p>`;
+  else if(w.kind==="mastered") body = `<h3>Dominaste ${name(w.pid)}</h3><p>Tres sesiones seguidas sin fallar y sin pista, incluida una ronda mixta.</p>`;
+  else body = `<h3>${w.n} frases producidas esta semana</h3><p>Cuando tengas dos semanas de datos aquí verás qué patrón mejoró más.</p>`;
+  return `<section class="panel win"><span class="eyebrow">Micro-victoria de la semana</span>${body}</section>`;
+}
+function boxesHtml(b){ let s='<span class="boxes" aria-label="Caja '+b+' de 6">'; for(let i=0;i<=6;i++) s+=`<i class="${i<=b?"on":""}"></i>`; return s+"</span>"; }
+function statusPill(st){ return `<span class="pill ${st}">${st==="new"?"nuevo":st==="learning"?"aprendiendo":"dominado"}</span>`; }
+function nextReviewText(pid){
+  const p = pst(pid); if(p.status==="new") return "—";
+  const d = p.nextReviewDay - S.state.studyDay;
+  return d<=0 ? "toca hoy" : d===1 ? "en 1 día de estudio" : `en ${d} días de estudio`;
+}
+function rulesText(tag){ return S.meta.rules?.[tag] || null; }
+
+/* ---------- vistas ---------- */
+function render(){
+  const app = $("#app"), dock = $("#dock");
+  if(S.err){ app.innerHTML = `<div class="empty"><h2>No hay conexión con los datos</h2><p>Abre esta página desde claude.ai con tu sesión iniciada para guardar tu progreso.</p></div>`; dock.innerHTML=""; return; }
+  if(!S.loaded.p || !S.loaded.s || !S.loaded.x){ app.innerHTML = `<div class="empty">Cargando tus frases…</div>`; dock.innerHTML = tabsHtml(); return; }
+  if(!S.state) S.state = blankState();
+  const v = S.view;
+  if(v==="drill") return renderDrill(app, dock);
+  if(v==="summary") return renderSummary(app, dock);
+  if(v==="progress") renderProgress(app); else if(v==="bank") renderBank(app); else if(v==="settings") renderSettings(app); else renderHome(app);
+  dock.innerHTML = tabsHtml();
+}
+const ICONS = {
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>',
+  progress:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  bank:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10M7 14h6"/></svg>',
+  settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>'
+};
+function tabsHtml(){
+  const t = (id,label) => `<button class="tab" data-go="${id}" ${S.view===id?'aria-current="page"':""}>${ICONS[id]}<span>${label}</span></button>`;
+  return `<nav class="tabs">${t("home","Inicio")}${t("progress","Progreso")}${t("bank","Frases")}${t("settings","Ajustes")}</nav>`;
+}
+
+function renderSettings(app){
+  const c = S.cfg;
+  app.innerHTML = `
+    <header class="stack" style="gap:4px"><span class="eyebrow">Configuración</span><h1>Ajustes</h1></header>
+    <form class="panel" id="cfgform">
+      <h2>Profesor: Gemini</h2>
+      <p class="small muted">Crea una clave gratuita en <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> con tu cuenta de Google y pégala aquí. Se guarda solo en este navegador. Sin clave, la app usa la comparación automática.</p>
+      <label class="f">Clave de API<input id="c-key" type="password" autocomplete="off" value="${esc(c.key)}" placeholder="AIza…"></label>
+      <label class="f">Modelo<input id="c-model" value="${esc(c.model)}"></label>
+      <h2 style="margin-top:8px">Dictado</h2>
+      <label class="f">Idioma del reconocedor<select id="c-lang">
+        <option value="en-US" ${c.lang==="en-US"?"selected":""}>Inglés (Estados Unidos)</option>
+        <option value="en-GB" ${c.lang==="en-GB"?"selected":""}>Inglés (Reino Unido)</option></select></label>
+      <label class="chk"><input type="checkbox" id="c-auto" ${c.autoCheck?"checked":""}> Comprobar sola al terminar de dictar</label>
+      <p class="small muted">Dictado en este navegador: <b>${SR ? "disponible" : "no disponible (usa Chrome o Safari)"}</b>.</p>
+      <div class="row"><button class="btn primary" type="submit">Guardar</button><button class="btn" type="button" data-act="testKey">Probar clave</button></div>
+    </form>
+    <section class="panel"><span class="eyebrow">Uso</span>
+      <p class="small">Cada frase comprobada es una consulta a Gemini. El nivel gratuito alcanza de sobra para una sesión de 20 frases al día.</p>
+    </section>`;
+}
+async function testKey(){
+  const k = $("#c-key")?.value.trim(); if(!k){ toast("Pega la clave primero."); return; }
+  S.cfg.key = k; S.cfg.model = $("#c-model")?.value.trim() || S.cfg.model;
+  toast("Probando…");
+  try{ const r = await gemini('Responde solo con este JSON exacto: {"ok":true}'); toast(r && r.ok ? "La clave funciona." : "Gemini respondió, pero raro. Prueba otra vez."); }
+  catch(e){ toast(e.message); }
+}
+function renderHome(app){
+  const st = S.state, list = sortedPatterns();
+  if(!list.length){ app.innerHTML = `<div class="empty"><h2>El banco de frases está vacío</h2><p>Agrega un patrón y sus frases en la pestaña Frases.</p></div>`; return; }
+  const open = unfinished();
+  const preview = buildPlan(st.lastStudyDate===todayStr() ? st.studyDay : st.studyDay+1);
+  const fid = preview.focus, fp = S.patterns[fid], fps = pst(fid);
+  const cnt = k => preview.plan.filter(x=>x.k===k).length;
+  const nf = cnt("focus"), nr = cnt("review"), nm = cnt("mixed");
+  const acc = accuracy(fid);
+  const dateTxt = new Date().toLocaleDateString("es", {weekday:"long", day:"numeric", month:"long"});
+  app.innerHTML = `
+    <header class="stack" style="gap:4px">
+      <span class="eyebrow">Día de estudio ${st.studyDay || 0} · ${esc(dateTxt)}</span>
+      <h1>Español → inglés, en voz alta</h1>
+    </header>
+    <section class="panel focus-card">
+      <div class="spread"><span class="eyebrow">Patrón en foco</span>${statusPill(fps.status)}</div>
+      <h2>${esc(fp.name)}</h2>
+      <p class="rule">${esc(fp.rule)}</p>
+      <div class="row small muted"><span>Caja ${boxesHtml(fps.box)}</span><span>Aciertos <b class="mono">${acc==null?"—":Math.round(acc*100)+"%"}</b></span><span>Racha <b class="mono">${fps.streak.length}</b></span></div>
+    </section>
+    <section class="panel">
+      <div class="spread"><span class="eyebrow">Próxima sesión</span><span class="mono small">${preview.plan.length} frases</span></div>
+      <div class="mix" aria-hidden="true">
+        ${nf?`<span style="flex:${nf};background:var(--accent)"></span>`:""}
+        ${nr?`<span style="flex:${nr};background:var(--good)"></span>`:""}
+        ${nm?`<span style="flex:${nm};background:var(--warn)"></span>`:""}
+      </div>
+      <div class="legend">
+        <span><b style="background:var(--accent)"></b>${nf} del foco</span>
+        <span><b style="background:var(--good)"></b>${nr} repasos</span>
+        <span><b style="background:var(--warn)"></b>${nm} ronda mixta</span>
+      </div>
+      ${!nr ? `<p class="small muted">Aún no hay repasos pendientes: los huecos se llenan con el foco.</p>` : ""}
+    </section>
+    ${winHtml(weeklyWin())}
+    <section class="stack" style="gap:10px">
+      ${open ? `<button class="btn primary big" data-act="resume">Continuar sesión (${open.attempts.length}/${open.plan.length})</button>
+                <button class="btn big" data-act="start">Empezar una nueva</button>`
+             : `<button class="btn primary big" data-act="start">Empezar sesión</button>`}
+    </section>`;
+}
+
+function renderDrill(app, dock){
+  const cur = S.cur, d = S.drill, step = currentStep();
+  if(!step){ S.view="home"; return render(); }
+  const it = S.itemIdx[step.i] || {es:"(Esta frase se borró del banco)", accepted:[""], hint:"", ruleShort:""};
+  const n = cur.attempts.length;
+  const segs = cur.plan.map((_,i)=> i<n ? `<span class="${cur.attempts[i].r}"></span>` : i===n ? `<span class="now"></span>` : "<span></span>").join("");
+  const pname = S.patterns[step.p]?.name || "";
+  const tag = step.k==="mixed" ? `<span class="tag mixed">Ronda mixta</span>` : step.k==="review" ? `<span class="tag review">Repaso · ${esc(pname)}</span>` : `<span class="tag">Foco · ${esc(pname)}</span>`;
+  let body = "";
+  if(d.phase==="answer"){
+    body = `
+      <label for="ans" class="eyebrow">${SR ? "Toca Hablar y di la frase en inglés, o escríbela." : "Escribe la frase en inglés."}</label>
+      <textarea id="ans" autocomplete="off" autocapitalize="sentences" spellcheck="false" placeholder="Tu frase en inglés">${esc(d.answer)}</textarea>`;
+    dock.innerHTML = `<div class="dock-in">
+      <button class="btn" data-act="hint" ${d.hint||!it.hint?"disabled":""}>Pista</button>
+      ${SR ? `<button id="micbtn" class="btn primary mic ${S.listening?"listening":""}" data-act="mic" style="flex:2">${MIC}<span>${S.listening?"Escuchando…":"Hablar"}</span></button>` : ""}
+      <button class="btn ${SR?"":"primary"}" data-act="check" style="flex:${SR?1:2}">Comprobar</button></div>`;
+  } else if(d.grading){
+    body = `
+      <section class="fb">
+        <div class="stack" style="gap:2px"><span class="eyebrow">Tu respuesta</span><p class="line">${esc(d.answer)}</p></div>
+        <div class="verdict grading"><span class="dot"></span>Revisando con Gemini…</div>
+      </section>`;
+    dock.innerHTML = `<div class="dock-in"><button class="btn big" data-act="next">Saltar la revisión</button></div>`;
+  } else {
+    const r = d.res, target = r.best || it.accepted[0];
+    const df = r.verdict==="correct" ? {user:esc(d.answer), target:esc(target)} : diffHtml(d.answer, target);
+    const others = it.accepted.filter(a=>norm(a).join(" ")!==norm(target).join(" ") && norm(a).join(" ")!==norm(d.answer).join(" "));
+    const label = {correct:"Correcto", almost:"Casi", incorrect:"Incorrecto"}[r.verdict];
+    const expl = r.explanation || (r.verdict==="correct" ? (r.learned ? "Bien dicho. Guardé tu versión como respuesta válida para esta frase." : "") : (it.ruleShort || S.patterns[step.p]?.rule || ""));
+    body = `
+      <section class="fb">
+        <div class="verdict ${r.verdict}">${label}${r.source==="local" ? '<small>comparación automática</small>' : ""}</div>
+        <div class="stack" style="gap:2px"><span class="eyebrow">Tu respuesta</span><p class="line">${d.answer.trim()? df.user : '<span class="muted">(sin respuesta)</span>'}</p></div>
+        ${r.verdict==="correct" && norm(target).join(" ")===norm(d.answer).join(" ") ? "" : `<div class="stack" style="gap:2px"><span class="eyebrow">${r.verdict==="correct" ? "Versión de referencia" : "Así se dice"}</span><p class="line">${df.target}</p></div>`}
+        ${expl ? `<p class="rule">${esc(expl)}</p>` : ""}
+        ${others.length ? `<div class="alts small"><span>También vale:</span>${others.slice(0,3).map(a=>`<span>${esc(a)}</span>`).join("")}</div>` : ""}
+        ${step.k==="mixed" ? `<p class="small muted">Este era del patrón: <b>${esc(pname)}</b></p>` : ""}
+        ${d.hint && r.verdict==="correct" ? `<p class="small muted">Con pista: cuenta como correcta, pero el patrón no sube de caja.</p>` : ""}
+      </section>`;
+    dock.innerHTML = `<div class="dock-in"><button class="btn primary big" data-act="next">Siguiente</button></div>`;
+  }
+  app.innerHTML = `
+    <div class="drillhead">
+      <div class="segs" aria-label="Frase ${n+1} de ${cur.plan.length}">${segs}</div>
+      <span class="mono small">${n+1}/${cur.plan.length}</span>
+      <button class="btn link" data-act="askend">Terminar</button>
+    </div>
+    ${d.confirmEnd ? `<div class="confirm"><p>¿Terminar ahora? Lo que respondiste queda guardado y cuenta para tu progreso.</p>
+      <div class="row"><button class="btn primary" data-act="endnow">Sí, terminar</button><button class="btn ghost" data-act="noend">Seguir</button></div></div>` : ""}
+    <section class="es-card">
+      ${tag}
+      <p class="es" lang="es">${esc(it.es)}</p>
+      ${d.hint ? `<span class="hint">${esc(it.hint)}</span>` : ""}
+    </section>
+    ${body}`;
+}
+
+function renderSummary(app, dock){
+  const s = S.summary, a = s.attempts || [];
+  const c = a.filter(x=>x.r==="correct").length, al = a.filter(x=>x.r==="almost").length, x = a.filter(x=>x.r==="incorrect").length;
+  const pct = a.length ? Math.round(100*c/a.length) : 0;
+  const head = pct>=80 ? "Sesión fuerte" : pct>=50 ? "Buen trabajo" : "Sesión hecha";
+  app.innerHTML = `
+    <header class="stack" style="gap:4px"><span class="eyebrow">Día de estudio ${s.day}</span><h1>${head}: ${a.length} frases producidas</h1></header>
+    <div class="tiles">
+      <div class="tile"><span class="n" style="color:var(--good)">${c}</span><span class="l">correctas</span></div>
+      <div class="tile"><span class="n" style="color:var(--warn)">${al}</span><span class="l">casi</span></div>
+      <div class="tile"><span class="n" style="color:var(--bad)">${x}</span><span class="l">incorrectas</span></div>
+    </div>
+    ${(s.mastered||[]).length ? `<section class="panel win"><span class="eyebrow">Micro-victoria</span><h3>Dominaste ${s.mastered.map(p=>esc(S.patterns[p]?.name||p)).join(", ")}</h3></section>` : ""}
+    <section class="panel"><span class="eyebrow">Cajas de repaso</span>
+      ${(s.changes||[]).map(ch=>`<div class="spread"><span>${esc(S.patterns[ch.p]?.name||ch.p)} <span class="muted small mono">${ch.c}/${ch.n}</span></span>
+        <span class="row small">${boxesHtml(ch.after)}<span class="mono ${ch.after>ch.before?"":"muted"}" style="${ch.after>ch.before?"color:var(--good)":ch.after<ch.before?"color:var(--bad)":""}">${ch.after>ch.before?"sube":ch.after<ch.before?"baja":"igual"}</span></span></div>`).join("")}
+      <p class="small muted">Sube con 80% o más correctas sin pista. Baja dos cajas con 30% o más incorrectas.</p>
+    </section>`;
+  dock.innerHTML = `<div class="dock-in"><button class="btn primary big" data-go="home">Volver al inicio</button></div>`;
+}
+
+function chartSvg(){
+  const ss = S.sessions.filter(s=>s.done && (s.attempts||[]).length).sort((a,b)=>a.startedAt-b.startedAt).slice(-20);
+  if(ss.length<2) return `<p class="small muted">El gráfico aparece después de dos sesiones terminadas.</p>`;
+  const W=320,H=150,L=34,R=12,T=12,B=24, iw=W-L-R, ih=H-T-B;
+  const pts = ss.map((s,i)=>({x:L+(ss.length===1?iw/2:i*iw/(ss.length-1)), y:T+ih*(1-accOf(s.attempts)/100), v:accOf(s.attempts)}));
+  const line = pts.map((p,i)=>(i?"L":"M")+p.x.toFixed(1)+","+p.y.toFixed(1)).join("");
+  const area = line + `L${pts.at(-1).x.toFixed(1)},${T+ih}L${pts[0].x.toFixed(1)},${T+ih}Z`;
+  const grid = [0,50,100].map(v=>{ const y=T+ih*(1-v/100); return `<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="${L-6}" y="${y+4}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--mono)">${v}%</text>`; }).join("");
+  const last = pts.at(-1);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Porcentaje de aciertos en las últimas ${ss.length} sesiones">
+    ${grid}<path d="${area}" fill="var(--accent-soft)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${last.x}" cy="${last.y}" r="4" fill="var(--accent)"/>
+    <text x="${Math.min(last.x, W-R)}" y="${Math.max(last.y-9, 10)}" text-anchor="end" font-size="11" fill="var(--ink)" font-family="var(--mono)">${last.v}%</text>
+    <text x="${L}" y="${H-6}" font-size="10" fill="var(--muted)" font-family="var(--mono)">sesiones →</text></svg>`;
+}
+
+function renderProgress(app){
+  const st = S.state, att = allAttempts(), done = S.sessions.filter(s=>s.done && (s.attempts||[]).length);
+  const avg = done.length ? Math.round(att.length/done.length) : 0;
+  const now = Date.now(), counts = {};
+  for(const a of att){ if(a.r==="correct" || now-a.t>=WEEK) continue; const tag = S.itemIdx[a.i]?.tag || "p:"+a.p; counts[tag]=(counts[tag]||0)+1; }
+  const top = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const open = S.ui.openPattern;
+  app.innerHTML = `
+    <header class="stack" style="gap:4px"><span class="eyebrow">Día de estudio ${st.studyDay||0}</span><h1>Tu progreso</h1></header>
+    <div class="tiles">
+      <div class="tile"><span class="n">${att.length}</span><span class="l">frases producidas</span></div>
+      <div class="tile"><span class="n">${done.length}</span><span class="l">sesiones</span></div>
+      <div class="tile"><span class="n">${avg}</span><span class="l">frases por sesión</span></div>
+    </div>
+    ${winHtml(weeklyWin())}
+    <section class="panel chart"><span class="eyebrow">Aciertos por sesión</span>${chartSvg()}</section>
+    <section class="panel"><span class="eyebrow">Top 5 errores de la semana</span>
+      ${top.length ? `<ol class="errs">${top.map(([tag,n])=>`<li><span class="c">${n}×</span><span>${esc(tag.startsWith("p:") ? (S.patterns[tag.slice(2)]?.rule||tag) : (rulesText(tag)||tag))}</span></li>`).join("")}</ol>`
+                   : `<p class="small muted">Sin errores registrados en los últimos 7 días.</p>`}
+    </section>
+    <section class="stack" style="gap:8px"><span class="eyebrow">Patrones</span>
+      ${sortedPatterns().map(p=>{ const ps=pst(p.id), acc=accuracy(p.id), isF=st.focusId===p.id;
+        return `<button class="prow" data-pat="${esc(p.id)}" aria-expanded="${open===p.id}">
+          <div class="spread"><b>${esc(p.name)}</b><span class="row" style="gap:6px">${isF?'<span class="pill focus">foco</span>':""}${statusPill(ps.status)}</span></div>
+          <div class="stats"><span>Nivel <b>${p.level}</b></span><span>${boxesHtml(ps.box)}</span><span>Aciertos <b>${acc==null?"—":Math.round(acc*100)+"%"}</b></span><span>Racha <b>${ps.streak.length}</b></span><span>Repaso <b>${nextReviewText(p.id)}</b></span></div>
+          ${open===p.id ? `<p class="rule small">${esc(p.rule)}</p>${isF?"":`<span class="btn primary" data-focus="${esc(p.id)}" role="button" style="align-self:flex-start">Poner en foco</span>`}` : ""}
+        </button>`; }).join("")}
+    </section>`;
+}
+
+function renderBank(app){
+  const list = sortedPatterns();
+  const sel = S.ui.bankPat && S.patterns[S.ui.bankPat] ? S.ui.bankPat : list[0]?.id;
+  S.ui.bankPat = sel;
+  const p = S.patterns[sel], ed = S.ui.edit;
+  const form = (it) => `
+    <form class="panel" id="itemform" data-edit="${esc(it?.id||"")}">
+      <h2>${it ? "Editar frase" : "Nueva frase"}</h2>
+      <label class="f">Patrón<select id="f-pat">${list.map(x=>`<option value="${esc(x.id)}" ${x.id===sel?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>
+      <label class="f">Frase en español<input id="f-es" required value="${esc(it?.es||"")}"></label>
+      <label class="f">Respuestas aceptadas (una por línea)<textarea id="f-acc" required>${esc((it?.accepted||[]).join("\n"))}</textarea></label>
+      <label class="f">Pista (una palabra)<input id="f-hint" value="${esc(it?.hint||"")}"></label>
+      <label class="f">Regla corta<input id="f-rule" value="${esc(it?.ruleShort||"")}"></label>
+      <div class="row"><button class="btn primary" type="submit">Guardar</button><button class="btn ghost" type="button" data-act="cancelEdit">Cancelar</button>
+        ${it ? (S.ui.confirmDel ? `<button class="btn" type="button" data-act="delItem" style="color:var(--bad)">Confirmar borrar</button>` : `<button class="btn ghost" type="button" data-act="askDel" style="color:var(--bad)">Borrar</button>`) : ""}</div>
+    </form>`;
+  app.innerHTML = `
+    <header class="stack" style="gap:4px"><span class="eyebrow">${Object.keys(S.itemIdx).length} frases en ${list.length} patrones</span><h1>Banco de frases</h1></header>
+    <div class="chips" role="group" aria-label="Patrones">${list.map(x=>`<button class="chip" data-bank="${esc(x.id)}" aria-pressed="${x.id===sel}">${esc(x.name)}</button>`).join("")}</div>
+    ${ed!==undefined ? form(ed ? p.items.find(i=>i.id===ed) : null) : `<button class="btn primary big" data-act="newItem">Agregar frase</button>`}
+    ${p ? `<section class="panel"><div class="spread"><h2>${esc(p.name)}</h2><span class="mono small muted">${p.items.length}</span></div><p class="rule small">${esc(p.rule)}</p>
+      <div>${p.items.map(it=>`<button class="item" data-item="${esc(it.id)}"><span>${esc(it.es)}</span><span class="en">${esc(it.accepted[0]||"")}</span></button>`).join("")}</div></section>` : ""}
+    <section class="panel">
+      ${S.ui.newPat ? `<form class="stack" id="patform"><h2>Nuevo patrón</h2>
+          <label class="f">Nombre<input id="np-name" required placeholder="Ej.: Present perfect"></label>
+          <label class="f">Nivel<input id="np-level" type="number" min="1" max="20" value="6"></label>
+          <label class="f">Regla en una línea<input id="np-rule" required></label>
+          <div class="row"><button class="btn primary" type="submit">Crear</button><button class="btn ghost" type="button" data-act="cancelPat">Cancelar</button></div></form>`
+        : `<button class="btn" data-act="newPat">Crear patrón nuevo</button>`}
+    </section>
+    <section class="panel"><span class="eyebrow">Respaldo</span>
+      <p class="small muted">El progreso vive en este navegador. Descarga un respaldo para pasarlo a otro dispositivo o por si borras los datos del navegador.</p>
+      <div class="row"><button class="btn" data-act="export">Exportar JSON</button>
+        <label class="btn" for="importfile" style="display:inline-flex;align-items:center">Importar JSON</label>
+        <input id="importfile" type="file" accept="application/json,.json" hidden></div>
+      ${S.ui.importData ? `<div class="confirm"><p>Esto reemplaza tus frases y tu progreso por los del archivo (${S.ui.importData.patterns.length} patrones, ${(S.ui.importData.sessions||[]).length} sesiones).</p>
+        <div class="row"><button class="btn primary" data-act="doImport">Reemplazar</button><button class="btn ghost" data-act="cancelImport">Cancelar</button></div></div>` : ""}
+      ${S.ui.exportText ? `<label class="f">Copia este texto y guárdalo como .json<textarea id="exporttext" readonly>${esc(S.ui.exportText)}</textarea></label>` : ""}
+    </section>`;
+}
+
+/* ---------- eventos ---------- */
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-go],[data-act],[data-pat],[data-focus],[data-bank],[data-item]");
+  if(!t) return;
+  if(t.dataset.go){ S.view = t.dataset.go; S.ui.edit = undefined; render(); window.scrollTo(0,0); return; }
+
+  if(t.dataset.focus){ e.stopPropagation(); S.state.focusId = t.dataset.focus; saveState(); toast("Foco cambiado: " + S.patterns[t.dataset.focus].name); render(); return; }
+  if(t.dataset.pat){ S.ui.openPattern = S.ui.openPattern===t.dataset.pat ? null : t.dataset.pat; render(); return; }
+  if(t.dataset.bank){ S.ui.bankPat = t.dataset.bank; S.ui.edit = undefined; render(); return; }
+  if(t.dataset.item){ S.ui.edit = t.dataset.item; S.ui.confirmDel = false; render(); window.scrollTo(0,0); return; }
+  const a = t.dataset.act;
+  if(a==="start") startSession();
+  else if(a==="resume") resumeSession();
+  else if(a==="hint"){ S.drill.answer = $("#ans")?.value || ""; S.drill.hint = true; render(); focusAns(); }
+  else if(a==="check") check();
+  else if(a==="mic") toggleListening();
+  else if(a==="testKey") testKey();
+  else if(a==="next") next();
+  else if(a==="askend"){ S.drill.answer = $("#ans")?.value ?? S.drill.answer; S.drill.confirmEnd = true; render(); }
+  else if(a==="noend"){ S.drill.confirmEnd = false; render(); }
+  else if(a==="endnow"){ if(S.cur.attempts.length) finalize(S.cur, false); else { S.cur.done = true; S.cur.changes=[]; saveSession(S.cur); S.cur=null; S.view="home"; render(); } }
+  else if(a==="newItem"){ S.ui.edit = null; render(); }
+  else if(a==="cancelEdit"){ S.ui.edit = undefined; render(); }
+  else if(a==="askDel"){ S.ui.confirmDel = true; render(); }
+  else if(a==="delItem"){ const p = clone(S.patterns[S.ui.bankPat]); p.items = p.items.filter(i=>i.id!==S.ui.edit); savePattern(p); S.ui.edit = undefined; toast("Frase borrada"); render(); }
+  else if(a==="newPat"){ S.ui.newPat = true; render(); }
+  else if(a==="cancelPat"){ S.ui.newPat = false; render(); }
+  else if(a==="export") doExport();
+  else if(a==="doImport") doImport();
+  else if(a==="cancelImport"){ S.ui.importData = null; render(); }
+});
+document.addEventListener("submit", e => {
+  e.preventDefault();
+  if(e.target.id==="itemform"){
+    const pid = $("#f-pat").value, es = $("#f-es").value.trim();
+    const acc = $("#f-acc").value.split("\n").map(s=>s.trim()).filter(Boolean);
+    if(!es || !acc.length){ toast("Falta la frase en español o al menos una respuesta."); return; }
+    const editId = e.target.dataset.edit;
+    const data = {es, accepted:acc, hint:$("#f-hint").value.trim(), ruleShort:$("#f-rule").value.trim()};
+    if(editId){
+      const oldP = Object.values(S.patterns).find(p=>p.items.some(i=>i.id===editId));
+      const old = oldP.items.find(i=>i.id===editId);
+      if(oldP.id===pid){ const p = clone(oldP); p.items = p.items.map(i=>i.id===editId ? {...i, ...data} : i); savePattern(p); }
+      else { const a1 = clone(oldP); a1.items = a1.items.filter(i=>i.id!==editId); savePattern(a1); const b1 = clone(S.patterns[pid]); b1.items.push({...old, ...data}); savePattern(b1); }
+    } else {
+      const p = clone(S.patterns[pid]);
+      p.items.push({id: pid + "-" + Date.now().toString(36), ...data, tag: p.items[0]?.tag || ""});
+      savePattern(p);
+    }
+    S.ui.bankPat = pid; S.ui.edit = undefined; toast("Frase guardada"); render();
+  }
+  if(e.target.id==="cfgform"){
+    S.cfg = {key:$("#c-key").value.trim(), model:$("#c-model").value.trim() || "gemini-2.5-flash", lang:$("#c-lang").value, autoCheck:$("#c-auto").checked};
+    saveCfg(); toast("Ajustes guardados"); S.view = "home"; render(); return;
+  }
+  if(e.target.id==="patform"){
+    const name = $("#np-name").value.trim(), rule = $("#np-rule").value.trim(), level = parseInt($("#np-level").value,10) || 6;
+    if(!name || !rule) return;
+    let id = baseNorm(name).replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "patron";
+    while(S.patterns[id]) id += "-2";
+    savePattern({id, name, level, order:99, rule, relatedTo:[], items:[]});
+    S.ui.newPat = false; S.ui.bankPat = id; S.ui.edit = null; render();
+  }
+});
+document.addEventListener("keydown", e => {
+  if(S.view!=="drill") return;
+  if(S.drill.phase==="answer" && e.key==="Enter" && !e.shiftKey && e.target.id==="ans"){ e.preventDefault(); check(); }
+  else if(S.drill.phase==="feedback" && e.key==="Enter" && e.target.tagName!=="TEXTAREA"){ e.preventDefault(); next(); }
+});
+document.addEventListener("change", e => {
+  if(e.target.id!=="importfile") return;
+  const f = e.target.files?.[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { try{ const d = JSON.parse(rd.result); if(!Array.isArray(d.patterns)) throw 0; S.ui.importData = d; render(); } catch { toast("Ese archivo no es un respaldo válido."); } };
+  rd.readAsText(f);
+});
+
+function doExport(){
+  const data = JSON.stringify({exportedAt:new Date().toISOString(), patterns:sortedPatterns(), meta:S.meta, state:S.state, sessions:S.sessions}, null, 1);
+  const blob = new Blob([data], {type:"application/json"}), url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = `drills-ingles-${todayStr()}.json`; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 3000); toast("Respaldo descargado");
+}
+function doImport(){
+  const d = S.ui.importData; S.ui.importData = null;
+  S.patterns = {}; for(const p of d.patterns) S.patterns[p.id] = clone(p);
+  indexItems();
+  if(d.meta?.rules) S.meta = clone(d.meta);
+  S.state = d.state ? clone(d.state) : blankState(); S.state.patterns ||= {}; S.state.items ||= {};
+  S.sessions = clone(d.sessions || []);
+  persist(); toast("Respaldo cargado"); render();
+}
+
+let toastTimer;
+function toast(msg){
+  let el = $(".toast"); if(!el){ el = document.createElement("div"); el.className="toast"; el.setAttribute("role","status"); document.body.appendChild(el); }
+  el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(()=>{ el.hidden = true; }, 2600);
+}
+
+/* ---------- arranque ---------- */
+function boot(){
+  try{ const c = JSON.parse(localStorage.getItem(CFG_KEY) || "null"); if(c && typeof c==="object") Object.assign(S.cfg, c); }catch{}
+  let data = null;
+  try{ data = JSON.parse(localStorage.getItem(LS_KEY) || "null"); }catch{}
+  if(data && data.patterns && Object.keys(data.patterns).length){
+    S.patterns = data.patterns; S.meta = data.meta || {rules:{}}; S.state = data.state || blankState(); S.sessions = data.sessions || [];
+  } else {
+    S.patterns = {}; for(const p of SEED.patterns) S.patterns[p.id] = clone(p);
+    S.meta = clone(SEED.meta); S.state = blankState(); S.sessions = []; persist();
+  }
+  S.state.patterns ||= {}; S.state.items ||= {};
+  indexItems(); S.loaded = {p:true, s:true, x:true, m:true};
+  if(!S.cfg.key) S.view = "settings";
+  render();
+}
+boot();
+</script>
+</body>
+</html>
