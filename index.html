@@ -107,6 +107,11 @@ label.chk input{width:20px;height:20px}
 .tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:var(--accent-soft);color:var(--accent);align-self:flex-start}
 .tag.mixed{background:var(--warn-soft);color:var(--warn)}
 .tag.review{background:var(--good-soft);color:var(--good)}
+.tag.preview{background:var(--line);color:var(--ink)}
+.goal{display:flex;gap:10px;align-items:center;padding-top:4px}
+.goal .dots{display:inline-flex;gap:4px;flex:none}
+.goal .dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--accent);display:block}
+.goal .dots i.on{background:var(--accent)}
 .hint{font-family:var(--mono);font-size:.95rem;color:var(--warn);background:var(--warn-soft);border-radius:8px;padding:6px 10px;align-self:flex-start}
 textarea#ans{width:100%;min-height:96px;resize:vertical;border:1.5px solid var(--line);border-radius:14px;background:var(--surface);padding:14px;font-size:1.15rem;line-height:1.4}
 textarea#ans:focus{border-color:var(--accent);outline:none}
@@ -192,17 +197,32 @@ function weakness(pid){
   return (inc + alm*0.5 + h*0.3) / p.recent.length;
 }
 function accuracy(pid){ const r = pst(pid).recent; if(!r.length) return null; return r.filter(a=>a.r==="correct").length / r.length; }
-function isMastered(ps){ return ps.streak.length>=3 && new Set(ps.streak.map(s=>s.d)).size>=3 && ps.streak.some(s=>s.m); }
+const FOCUS_MAX = 12, PREVIEW_MAX = 8, MASTER_RATE = 0.8, MASTER_SESSIONS = 2, MASTER_MIN_ITEMS = 5;
+// Dominio: 2 sesiones seguidas, en días de estudio distintos, con >=80 % correctas sin pista (mínimo 5 frases del patrón en la sesión).
+function applySessionToMastery(pid, b, day, when){
+  if(b.n < MASTER_MIN_ITEMS) return false;
+  const ps = pst(pid);
+  ps.good ||= [];
+  if(b.ci / b.n >= MASTER_RATE){ if(!ps.good.includes(day)) ps.good.push(day); }
+  else ps.good = [];
+  if(ps.status!=="mastered" && ps.good.length >= MASTER_SESSIONS){ ps.status = "mastered"; ps.masteredAt = when || Date.now(); return true; }
+  return false;
+}
+function masteryProgress(pid){ const ps = pst(pid); return Math.min((ps.good||[]).length, MASTER_SESSIONS); }
+function nextPatternAfter(pid){
+  const list = sortedPatterns(), i = list.findIndex(p=>p.id===pid);
+  const after = [...list.slice(i+1), ...list.slice(0, Math.max(i,0))];
+  return (after.find(p=>pst(p.id).status!=="mastered") || null)?.id || null;
+}
 
 function chooseFocus(){
   const st = S.state, list = sortedPatterns();
   if(!list.length) return null;
   const f = st.focusId && S.patterns[st.focusId];
   if(f && pst(f.id).status!=="mastered") return f.id;
-  const learning = list.filter(p=>pst(p.id).status==="learning").sort((a,b)=>weakness(b.id)-weakness(a.id));
-  if(learning.length) return learning[0].id;
-  const nw = list.find(p=>pst(p.id).status==="new");
-  if(nw) return nw.id;
+  // Sigue el orden del curso: el primer patrón no dominado.
+  const nx = list.find(p=>pst(p.id).status!=="mastered");
+  if(nx) return nx.id;
   return [...list].sort((a,b)=>weakness(b.id)-weakness(a.id))[0].id;
 }
 
@@ -239,15 +259,25 @@ function buildPlan(day){
   let pool = (S.patterns[focus].relatedTo||[]).filter(id=>S.patterns[id] && pst(id).status!=="new");
   if(!pool.length) pool = sortedPatterns().filter(p=>p.id!==focus && pst(p.id).status!=="new").map(p=>p.id);
   const mixedCount = pool.length ? 3 : 0;
-  const nFocus = SESSION_SIZE - reviews.length - mixedCount;
+  const focusPool = (S.patterns[focus].items||[]).length;
+  const nFocus = Math.min(FOCUS_MAX, focusPool);
   const focusItems = pickItems(focus, nFocus, used).map(it=>({i:it.id,p:focus,k:"focus"}));
   const mixed = [];
   if(mixedCount){
-    const f1 = pickItems(focus, 1, used)[0]; if(f1) mixed.push({i:f1.id,p:focus,k:"mixed"});
     const ps = shuffle([...pool]);
-    for(let j=0; mixed.length<3 && j<6; j++){ const pid = ps[j % ps.length]; const it = pickItems(pid,1,used)[0]; if(it) mixed.push({i:it.id,p:pid,k:"mixed"}); }
+    for(let j=0; mixed.length<mixedCount && j<6; j++){ const pid = ps[j % ps.length]; const it = pickItems(pid,1,used).filter(x=>!mixed.some(m=>m.i===x.id))[0]; if(it) mixed.push({i:it.id,p:pid,k:"mixed"}); }
+    const f1 = pickItems(focus, 1, used).filter(x=>!focusItems.some(f=>f.i===x.id))[0];
+    if(f1 && mixed.length) mixed[mixed.length-1] = {i:f1.id,p:focus,k:"mixed"};
   }
-  return {focus, plan:[...focusItems, ...reviews, ...shuffle(mixed)]};
+  // Adelanto del patrón siguiente para completar la sesión.
+  const nextId = nextPatternAfter(focus);
+  const room = SESSION_SIZE - focusItems.length - reviews.length - mixed.length;
+  const preview = (nextId && nextId!==focus && room>0)
+    ? pickItems(nextId, Math.min(PREVIEW_MAX, room, (S.patterns[nextId].items||[]).length), used).map(it=>({i:it.id,p:nextId,k:"preview"})) : [];
+  // Si todavía falta, más del foco (sin repetir si se puede).
+  const left = SESSION_SIZE - focusItems.length - reviews.length - mixed.length - preview.length;
+  const extra = left>0 ? pickItems(focus, left, used).map(it=>({i:it.id,p:focus,k:"focus"})) : [];
+  return {focus, next:nextId, plan:[...focusItems, ...extra, ...preview, ...reviews, ...shuffle(mixed)]};
 }
 
 /* ---------- guardado (localStorage) ---------- */
@@ -494,7 +524,6 @@ function grade(r){
   ps.recent.push({r, h:d.hint}); if(ps.recent.length>10) ps.recent.shift();
   if(r==="correct" && !d.hint){ ps.streak.push({d:cur.day, m:step.k==="mixed"}); if(ps.streak.length>40) ps.streak.shift(); }
   else ps.streak = [];
-  if(ps.status!=="mastered" && isMastered(ps)){ ps.status="mastered"; ps.masteredAt=Date.now(); (cur.mastered ||= []).push(step.p); toast("¡Patrón dominado! " + (S.patterns[step.p]?.name||"")); }
   const prev = S.state.items[step.i] || {seen:0};
   S.state.items[step.i] = {seen:prev.seen+1, last:r, hint:d.hint, lastDay:cur.day};
   if(cur.attempts.length>=cur.plan.length){ finalize(cur, false); return; }
@@ -511,7 +540,9 @@ function finalize(sess, silent){
     if(b.x/b.n >= 0.3) ps.box = Math.max(ps.box-2, 0);
     else if(b.ci/b.n >= 0.8) ps.box = Math.min(ps.box+1, 6);
     ps.nextReviewDay = sess.day + INTERVAL[ps.box];
-    changes.push({p:pid, before, after:ps.box, n:b.n, c:b.c});
+    const wasFocus = pid===sess.focusId;
+    if(wasFocus && applySessionToMastery(pid, b, sess.day)) (sess.mastered ||= []).push(pid);
+    changes.push({p:pid, before, after:ps.box, n:b.n, c:b.c, ci:b.ci, good:(ps.good||[]).length, focus:wasFocus});
   }
   sess.done = true; sess.endedAt = Date.now(); sess.changes = changes;
   S.state.focusId = chooseFocus();
@@ -615,7 +646,9 @@ function renderHome(app){
   const preview = buildPlan(st.lastStudyDate===todayStr() ? st.studyDay : st.studyDay+1);
   const fid = preview.focus, fp = S.patterns[fid], fps = pst(fid);
   const cnt = k => preview.plan.filter(x=>x.k===k).length;
-  const nf = cnt("focus"), nr = cnt("review"), nm = cnt("mixed");
+  const nf = cnt("focus"), nr = cnt("review"), nm = cnt("mixed"), np = cnt("preview");
+  const nextName = preview.next ? S.patterns[preview.next]?.name : null;
+  const prog = masteryProgress(fid);
   const acc = accuracy(fid);
   const dateTxt = new Date().toLocaleDateString("es", {weekday:"long", day:"numeric", month:"long"});
   app.innerHTML = `
@@ -628,6 +661,12 @@ function renderHome(app){
       <h2>${esc(fp.name)}</h2>
       <p class="rule">${esc(fp.rule)}</p>
       <div class="row small muted"><span>Caja ${boxesHtml(fps.box)}</span><span>Aciertos <b class="mono">${acc==null?"—":Math.round(acc*100)+"%"}</b></span><span>Racha <b class="mono">${fps.streak.length}</b></span></div>
+      <div class="goal"><span class="dots">${Array.from({length:MASTER_SESSIONS},(_,i)=>`<i class="${i<prog?"on":""}"></i>`).join("")}</span>
+        <span class="small">Para pasar al siguiente patrón: ${MASTER_SESSIONS} sesiones seguidas, en días distintos, con 80 % o más sin pista. Llevas <b>${prog} de ${MASTER_SESSIONS}</b>.</span></div>
+      ${nextName ? (S.ui.confirmSkip
+        ? `<div class="confirm"><p>¿Pasar ya a <b>${esc(nextName)}</b>? ${esc(fp.name)} queda como dominado y volverá en los repasos.</p>
+            <div class="row"><button class="btn primary" data-act="doSkip">Sí, pasar</button><button class="btn ghost" data-act="noSkip">Cancelar</button></div></div>`
+        : `<button class="btn" data-act="askSkip">Pasar al siguiente patrón: ${esc(nextName)}</button>`) : ""}
     </section>
     <section class="panel">
       <div class="spread"><span class="eyebrow">Próxima sesión</span><span class="mono small">${preview.plan.length} frases</span></div>
@@ -635,13 +674,15 @@ function renderHome(app){
         ${nf?`<span style="flex:${nf};background:var(--accent)"></span>`:""}
         ${nr?`<span style="flex:${nr};background:var(--good)"></span>`:""}
         ${nm?`<span style="flex:${nm};background:var(--warn)"></span>`:""}
+        ${np?`<span style="flex:${np};background:var(--muted)"></span>`:""}
       </div>
       <div class="legend">
         <span><b style="background:var(--accent)"></b>${nf} del foco</span>
         <span><b style="background:var(--good)"></b>${nr} repasos</span>
         <span><b style="background:var(--warn)"></b>${nm} ronda mixta</span>
+        ${np?`<span><b style="background:var(--muted)"></b>${np} adelanto</span>`:""}
       </div>
-      ${!nr ? `<p class="small muted">Aún no hay repasos pendientes: los huecos se llenan con el foco.</p>` : ""}
+      ${np && nextName ? `<p class="small muted">Adelanto: frases de ${esc(nextName)}, el patrón que sigue.</p>` : ""}
     </section>
     ${winHtml(weeklyWin())}
     <section class="stack" style="gap:10px">
@@ -658,7 +699,7 @@ function renderDrill(app, dock){
   const n = cur.attempts.length;
   const segs = cur.plan.map((_,i)=> i<n ? `<span class="${cur.attempts[i].r}"></span>` : i===n ? `<span class="now"></span>` : "<span></span>").join("");
   const pname = S.patterns[step.p]?.name || "";
-  const tag = step.k==="mixed" ? `<span class="tag mixed">Ronda mixta</span>` : step.k==="review" ? `<span class="tag review">Repaso · ${esc(pname)}</span>` : `<span class="tag">Foco · ${esc(pname)}</span>`;
+  const tag = step.k==="mixed" ? `<span class="tag mixed">Ronda mixta</span>` : step.k==="review" ? `<span class="tag review">Repaso · ${esc(pname)}</span>` : step.k==="preview" ? `<span class="tag preview">Adelanto · ${esc(pname)}</span>` : `<span class="tag">Foco · ${esc(pname)}</span>`;
   let body = "";
   if(d.phase==="answer"){
     body = `
@@ -726,7 +767,12 @@ function renderSummary(app, dock){
       ${(s.changes||[]).map(ch=>`<div class="spread"><span>${esc(S.patterns[ch.p]?.name||ch.p)} <span class="muted small mono">${ch.c}/${ch.n}</span></span>
         <span class="row small">${boxesHtml(ch.after)}<span class="mono ${ch.after>ch.before?"":"muted"}" style="${ch.after>ch.before?"color:var(--good)":ch.after<ch.before?"color:var(--bad)":""}">${ch.after>ch.before?"sube":ch.after<ch.before?"baja":"igual"}</span></span></div>`).join("")}
       <p class="small muted">Sube con 80% o más correctas sin pista. Baja dos cajas con 30% o más incorrectas.</p>
-    </section>`;
+    </section>
+    ${(()=>{ const f = (s.changes||[]).find(ch=>ch.focus); if(!f || (s.mastered||[]).includes(f.p)) return "";
+      const rate = f.n ? Math.round(100*f.ci/f.n) : 0, nm = esc(S.patterns[f.p]?.name||f.p);
+      return `<section class="panel"><span class="eyebrow">Avance de ${nm}</span>
+        <p>${rate>=80 ? `Sesión buena (${rate} % sin pista): llevas <b>${Math.min(f.good,MASTER_SESSIONS)} de ${MASTER_SESSIONS}</b>. ${f.good>=1 && f.good<MASTER_SESSIONS ? "Otra así en otro día y pasas al siguiente patrón." : ""}`
+                     : `Esta vez ${rate} % sin pista; hace falta 80 % para contar. El contador vuelve a 0 de ${MASTER_SESSIONS}.`}</p></section>`; })()}`;
   dock.innerHTML = `<div class="dock-in"><button class="btn primary big" data-go="home">Volver al inicio</button></div>`;
 }
 
@@ -830,6 +876,15 @@ document.addEventListener("click", async e => {
   const a = t.dataset.act;
   if(a==="start") startSession();
   else if(a==="resume") resumeSession();
+  else if(a==="askSkip"){ S.ui.confirmSkip = true; render(); }
+  else if(a==="noSkip"){ S.ui.confirmSkip = false; render(); }
+  else if(a==="doSkip"){
+    const cur = chooseFocus(), ps = pst(cur);
+    ps.status = "mastered"; ps.masteredAt = Date.now(); ps.manual = true;
+    S.state.focusId = nextPatternAfter(cur) || chooseFocus();
+    S.ui.confirmSkip = false; saveState();
+    toast("Nuevo foco: " + (S.patterns[S.state.focusId]?.name || "")); render(); window.scrollTo(0,0);
+  }
   else if(a==="hint"){ stopDictation(false); S.drill.answer = $("#ans")?.value || ""; S.drill.hint = true; render(); focusAns(); }
   else if(a==="check") check();
   else if(a==="mic") toggleListening();
@@ -930,6 +985,17 @@ function boot(){
   }
   S.state.patterns ||= {}; S.state.items ||= {};
   indexItems(); S.loaded = {p:true, s:true, x:true, m:true};
+  if(!(S.state.v>=3)){
+    for(const ps of Object.values(S.state.patterns)) ps.good = [];
+    const done = S.sessions.filter(s=>s.done && (s.attempts||[]).length).sort((a,b)=>a.startedAt-b.startedAt);
+    for(const s of done){
+      const by = {};
+      for(const a of s.attempts){ const b = by[a.p] ||= {n:0,ci:0}; b.n++; if(a.r==="correct" && !a.h) b.ci++; }
+      for(const [pid,b] of Object.entries(by)) if(S.patterns[pid] && (!s.focusId || s.focusId===pid)) applySessionToMastery(pid, b, s.day, s.endedAt);
+    }
+    S.state.focusId = chooseFocus();
+    S.state.v = 3; persist();
+  }
   if(!S.cfg.key) S.view = "settings";
   render();
 }
