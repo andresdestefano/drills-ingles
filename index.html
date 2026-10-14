@@ -198,12 +198,12 @@ function weakness(pid){
 }
 function accuracy(pid){ const r = pst(pid).recent; if(!r.length) return null; return r.filter(a=>a.r==="correct").length / r.length; }
 const FOCUS_MAX = 12, PREVIEW_MAX = 8, MASTER_RATE = 0.8, MASTER_SESSIONS = 2, MASTER_MIN_ITEMS = 5;
-// Dominio: 2 sesiones seguidas, en días de estudio distintos, con >=80 % correctas sin pista (mínimo 5 frases del patrón en la sesión).
+// Dominio: 2 sesiones seguidas (el mismo día cuenta) con >=80 % correctas sin pista (mínimo 5 frases del patrón en la sesión).
 function applySessionToMastery(pid, b, day, when){
   if(b.n < MASTER_MIN_ITEMS) return false;
   const ps = pst(pid);
   ps.good ||= [];
-  if(b.ci / b.n >= MASTER_RATE){ if(!ps.good.includes(day)) ps.good.push(day); }
+  if(b.ci / b.n >= MASTER_RATE){ ps.good.push(day); }
   else ps.good = [];
   if(ps.status!=="mastered" && ps.good.length >= MASTER_SESSIONS){ ps.status = "mastered"; ps.masteredAt = when || Date.now(); return true; }
   return false;
@@ -662,7 +662,7 @@ function renderHome(app){
       <p class="rule">${esc(fp.rule)}</p>
       <div class="row small muted"><span>Caja ${boxesHtml(fps.box)}</span><span>Aciertos <b class="mono">${acc==null?"—":Math.round(acc*100)+"%"}</b></span><span>Racha <b class="mono">${fps.streak.length}</b></span></div>
       <div class="goal"><span class="dots">${Array.from({length:MASTER_SESSIONS},(_,i)=>`<i class="${i<prog?"on":""}"></i>`).join("")}</span>
-        <span class="small">Para pasar al siguiente patrón: ${MASTER_SESSIONS} sesiones seguidas, en días distintos, con 80 % o más sin pista. Llevas <b>${prog} de ${MASTER_SESSIONS}</b>.</span></div>
+        <span class="small">Para pasar al siguiente patrón: ${MASTER_SESSIONS} sesiones seguidas con 80 % o más sin pista (pueden ser el mismo día). Llevas <b>${prog} de ${MASTER_SESSIONS}</b>.</span></div>
       ${nextName ? `<p class="small muted">Después sigue <b>${esc(nextName)}</b>. La app te pasa sola cuando cumplas la meta.</p>` : ""}
     </section>
     <section class="panel">
@@ -768,7 +768,7 @@ function renderSummary(app, dock){
     ${(()=>{ const f = (s.changes||[]).find(ch=>ch.focus); if(!f || (s.mastered||[]).includes(f.p)) return "";
       const rate = f.n ? Math.round(100*f.ci/f.n) : 0, nm = esc(S.patterns[f.p]?.name||f.p);
       return `<section class="panel"><span class="eyebrow">Avance de ${nm}</span>
-        <p>${rate>=80 ? `Sesión buena (${rate} % sin pista): llevas <b>${Math.min(f.good,MASTER_SESSIONS)} de ${MASTER_SESSIONS}</b>. ${f.good>=1 && f.good<MASTER_SESSIONS ? "Otra así en otro día y pasas al siguiente patrón." : ""}`
+        <p>${rate>=80 ? `Sesión buena (${rate} % sin pista): llevas <b>${Math.min(f.good,MASTER_SESSIONS)} de ${MASTER_SESSIONS}</b>. ${f.good>=1 && f.good<MASTER_SESSIONS ? "Una más así y pasas al siguiente patrón." : ""}`
                      : `Esta vez ${rate} % sin pista; hace falta 80 % para contar. El contador vuelve a 0 de ${MASTER_SESSIONS}.`}</p></section>`; })()}`;
   dock.innerHTML = `<div class="dock-in"><button class="btn primary big" data-go="home">Volver al inicio</button></div>`;
 }
@@ -972,7 +972,7 @@ function boot(){
   }
   S.state.patterns ||= {}; S.state.items ||= {};
   indexItems(); S.loaded = {p:true, s:true, x:true, m:true};
-  if(!(S.state.v>=3)){
+  if(!(S.state.v>=4)){
     for(const ps of Object.values(S.state.patterns)) ps.good = [];
     const done = S.sessions.filter(s=>s.done && (s.attempts||[]).length).sort((a,b)=>a.startedAt-b.startedAt);
     for(const s of done){
@@ -981,7 +981,7 @@ function boot(){
       for(const [pid,b] of Object.entries(by)) if(S.patterns[pid] && (!s.focusId || s.focusId===pid)) applySessionToMastery(pid, b, s.day, s.endedAt);
     }
     S.state.focusId = chooseFocus();
-    S.state.v = 3; persist();
+    S.state.v = 4; persist();
   }
   if(!S.cfg.key) S.view = "settings";
   render();
