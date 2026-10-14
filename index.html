@@ -663,10 +663,7 @@ function renderHome(app){
       <div class="row small muted"><span>Caja ${boxesHtml(fps.box)}</span><span>Aciertos <b class="mono">${acc==null?"—":Math.round(acc*100)+"%"}</b></span><span>Racha <b class="mono">${fps.streak.length}</b></span></div>
       <div class="goal"><span class="dots">${Array.from({length:MASTER_SESSIONS},(_,i)=>`<i class="${i<prog?"on":""}"></i>`).join("")}</span>
         <span class="small">Para pasar al siguiente patrón: ${MASTER_SESSIONS} sesiones seguidas, en días distintos, con 80 % o más sin pista. Llevas <b>${prog} de ${MASTER_SESSIONS}</b>.</span></div>
-      ${nextName ? (S.ui.confirmSkip
-        ? `<div class="confirm"><p>¿Pasar ya a <b>${esc(nextName)}</b>? ${esc(fp.name)} queda como dominado y volverá en los repasos.</p>
-            <div class="row"><button class="btn primary" data-act="doSkip">Sí, pasar</button><button class="btn ghost" data-act="noSkip">Cancelar</button></div></div>`
-        : `<button class="btn" data-act="askSkip">Pasar al siguiente patrón: ${esc(nextName)}</button>`) : ""}
+      ${nextName ? `<p class="small muted">Después sigue <b>${esc(nextName)}</b>. La app te pasa sola cuando cumplas la meta.</p>` : ""}
     </section>
     <section class="panel">
       <div class="spread"><span class="eyebrow">Próxima sesión</span><span class="mono small">${preview.plan.length} frases</span></div>
@@ -762,7 +759,7 @@ function renderSummary(app, dock){
       <div class="tile"><span class="n" style="color:var(--warn)">${al}</span><span class="l">casi</span></div>
       <div class="tile"><span class="n" style="color:var(--bad)">${x}</span><span class="l">incorrectas</span></div>
     </div>
-    ${(s.mastered||[]).length ? `<section class="panel win"><span class="eyebrow">Micro-victoria</span><h3>Dominaste ${s.mastered.map(p=>esc(S.patterns[p]?.name||p)).join(", ")}</h3></section>` : ""}
+    ${(s.mastered||[]).length ? `<section class="panel win"><span class="eyebrow">Nivel superado</span><h3>Dominaste ${s.mastered.map(p=>esc(S.patterns[p]?.name||p)).join(", ")}</h3>${S.patterns[S.state.focusId] && !s.mastered.includes(S.state.focusId) ? `<p>Desde la próxima sesión, tu foco es <b>${esc(S.patterns[S.state.focusId].name)}</b>.</p>` : ""}</section>` : ""}
     <section class="panel"><span class="eyebrow">Cajas de repaso</span>
       ${(s.changes||[]).map(ch=>`<div class="spread"><span>${esc(S.patterns[ch.p]?.name||ch.p)} <span class="muted small mono">${ch.c}/${ch.n}</span></span>
         <span class="row small">${boxesHtml(ch.after)}<span class="mono ${ch.after>ch.before?"":"muted"}" style="${ch.after>ch.before?"color:var(--good)":ch.after<ch.before?"color:var(--bad)":""}">${ch.after>ch.before?"sube":ch.after<ch.before?"baja":"igual"}</span></span></div>`).join("")}
@@ -817,7 +814,7 @@ function renderProgress(app){
         return `<button class="prow" data-pat="${esc(p.id)}" aria-expanded="${open===p.id}">
           <div class="spread"><b>${esc(p.name)}</b><span class="row" style="gap:6px">${isF?'<span class="pill focus">foco</span>':""}${statusPill(ps.status)}</span></div>
           <div class="stats"><span>Nivel <b>${p.level}</b></span><span>${boxesHtml(ps.box)}</span><span>Aciertos <b>${acc==null?"—":Math.round(acc*100)+"%"}</b></span><span>Racha <b>${ps.streak.length}</b></span><span>Repaso <b>${nextReviewText(p.id)}</b></span></div>
-          ${open===p.id ? `<p class="rule small">${esc(p.rule)}</p>${isF?"":`<span class="btn primary" data-focus="${esc(p.id)}" role="button" style="align-self:flex-start">Poner en foco</span>`}` : ""}
+          ${open===p.id ? `<p class="rule small">${esc(p.rule)}</p>` : ""}
         </button>`; }).join("")}
     </section>`;
 }
@@ -865,26 +862,16 @@ function renderBank(app){
 
 /* ---------- eventos ---------- */
 document.addEventListener("click", async e => {
-  const t = e.target.closest("[data-go],[data-act],[data-pat],[data-focus],[data-bank],[data-item]");
+  const t = e.target.closest("[data-go],[data-act],[data-pat],[data-bank],[data-item]");
   if(!t) return;
   if(t.dataset.go){ S.view = t.dataset.go; S.ui.edit = undefined; render(); window.scrollTo(0,0); return; }
 
-  if(t.dataset.focus){ e.stopPropagation(); S.state.focusId = t.dataset.focus; saveState(); toast("Foco cambiado: " + S.patterns[t.dataset.focus].name); render(); return; }
   if(t.dataset.pat){ S.ui.openPattern = S.ui.openPattern===t.dataset.pat ? null : t.dataset.pat; render(); return; }
   if(t.dataset.bank){ S.ui.bankPat = t.dataset.bank; S.ui.edit = undefined; render(); return; }
   if(t.dataset.item){ S.ui.edit = t.dataset.item; S.ui.confirmDel = false; render(); window.scrollTo(0,0); return; }
   const a = t.dataset.act;
   if(a==="start") startSession();
   else if(a==="resume") resumeSession();
-  else if(a==="askSkip"){ S.ui.confirmSkip = true; render(); }
-  else if(a==="noSkip"){ S.ui.confirmSkip = false; render(); }
-  else if(a==="doSkip"){
-    const cur = chooseFocus(), ps = pst(cur);
-    ps.status = "mastered"; ps.masteredAt = Date.now(); ps.manual = true;
-    S.state.focusId = nextPatternAfter(cur) || chooseFocus();
-    S.ui.confirmSkip = false; saveState();
-    toast("Nuevo foco: " + (S.patterns[S.state.focusId]?.name || "")); render(); window.scrollTo(0,0);
-  }
   else if(a==="hint"){ stopDictation(false); S.drill.answer = $("#ans")?.value || ""; S.drill.hint = true; render(); focusAns(); }
   else if(a==="check") check();
   else if(a==="mic") toggleListening();
