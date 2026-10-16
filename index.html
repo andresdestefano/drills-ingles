@@ -341,7 +341,9 @@ function diffHtml(ans, target){
 
 /* ---------- dictado (Web Speech API) ---------- */
 const MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
-const SILENCE_MS = 1500, NO_SPEECH_MS = 7000, MAX_MS = 15000, KILL_MS = 1200, WAKE_MS = 2000, SETTLE_MS = 350;
+// Pausa permitida al hablar: se elige en Ajustes (por defecto 3 s).
+const pauseMs = () => Math.round((Number(S.cfg.pause) || 3) * 1000);
+const NO_SPEECH_MS = 8000, MAX_MS = 30000, KILL_MS = 1200, WAKE_MS = 2000, SETTLE_MS = 350;
 // Estado del reconocedor del navegador fuera de cada dictado: en iPhone, arrancar uno nuevo
 // mientras el anterior todavía suelta el micrófono hace que el segundo no escuche nada.
 const MICSYS = {busyUntil: 0, last: null};
@@ -390,7 +392,7 @@ function toggleListening(){
     if(done) return;
     try{ rec = new SR(); }catch{ toast("No se pudo iniciar el dictado."); errored = true; finish(); return; }
     MICSYS.last = rec;
-    rec.lang = S.cfg.lang; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+    rec.lang = S.cfg.lang; rec.interimResults = true; rec.continuous = true; rec.maxAlternatives = 1;
     rec.onstart = goLive; rec.onaudiostart = goLive;
     rec.onresult = e => {
       goLive();
@@ -399,7 +401,7 @@ function toggleListening(){
       heard = text.replace(/\s+/g," ").trim();
       const ta = $("#ans"); if(ta) ta.value = [base, heard].filter(Boolean).join(" ");
       clearTimeout(T.ns); clearTimeout(T.sil);
-      if(!stopping) T.sil = setTimeout(() => stop(true), SILENCE_MS);
+      if(!stopping) T.sil = setTimeout(() => stop(true), pauseMs());
     };
     rec.onerror = e => {
       if(!live && !retried && (e.error==="aborted" || e.error==="audio-capture" || e.error==="network")){ relaunch(); return; }
@@ -658,6 +660,8 @@ function renderSettings(app){
       <label class="f">Idioma del reconocedor<select id="c-lang">
         <option value="en-US" ${c.lang==="en-US"?"selected":""}>Inglés (Estados Unidos)</option>
         <option value="en-GB" ${c.lang==="en-GB"?"selected":""}>Inglés (Reino Unido)</option></select></label>
+      <label class="f">Pausa para pensar antes de que corte el dictado<select id="c-pause">
+        ${[2,3,4,5].map(s=>`<option value="${s}" ${(Number(c.pause)||3)===s?"selected":""}>${s} segundos</option>`).join("")}</select></label>
       <label class="chk"><input type="checkbox" id="c-auto" ${c.autoCheck?"checked":""}> Comprobar sola al terminar de dictar</label>
       <p class="small muted">Dictado en este navegador: <b>${SR ? "disponible" : "no disponible (usa Chrome o Safari)"}</b>.</p>
       <div class="row"><button class="btn primary" type="submit">Guardar</button><button class="btn" type="button" data-act="testKey">Probar clave</button></div>
@@ -945,7 +949,7 @@ document.addEventListener("submit", e => {
     S.ui.bankPat = pid; S.ui.edit = undefined; toast("Frase guardada"); render();
   }
   if(e.target.id==="cfgform"){
-    S.cfg = {v:2, key:$("#c-key").value.trim(), model:$("#c-model").value.trim() || "gemini-flash-lite-latest", lang:$("#c-lang").value, autoCheck:$("#c-auto").checked};
+    S.cfg = {v:2, key:$("#c-key").value.trim(), model:$("#c-model").value.trim() || "gemini-flash-lite-latest", lang:$("#c-lang").value, pause:Number($("#c-pause").value)||3, autoCheck:$("#c-auto").checked};
     saveCfg(); toast("Ajustes guardados"); S.view = "home"; render(); return;
   }
   if(e.target.id==="patform"){
