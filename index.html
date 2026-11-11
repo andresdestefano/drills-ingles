@@ -847,7 +847,7 @@ function renderSettings(app){
         <option value="en-GB" ${c.lang==="en-GB"?"selected":""}>Inglés (Reino Unido)</option></select></label>
       <label class="f">Pausa para pensar antes de que corte el dictado<select id="c-pause">
         ${[2,3,4,5].map(s=>`<option value="${s}" ${(Number(c.pause)||3)===s?"selected":""}>${s} segundos</option>`).join("")}</select></label>
-      <p class="small muted">Versión de la app: <b>v2.4 · 11-11-2026</b></p>
+      <p class="small muted">Versión de la app: <b>v2.5 · 11-11-2026</b></p>
       <p class="small muted">Dictado del navegador: <b>${SR ? "disponible" : "no disponible"}</b> · Grabación para Gemini: <b>${CAN_REC ? "disponible" : "no disponible"}</b>.</p>
       <div class="row"><button class="btn primary" type="submit">Guardar</button><button class="btn" type="button" data-act="testKey">Probar clave</button></div>
     </form>
@@ -993,8 +993,8 @@ function renderSummary(app, dock){
     ${(()=>{ const f = (s.changes||[]).find(ch=>ch.focus); if(!f || (s.mastered||[]).includes(f.p)) return "";
       const rate = f.n ? Math.round(100*f.ci/f.n) : 0, nm = esc(S.patterns[f.p]?.name||f.p);
       return `<section class="panel"><span class="eyebrow">Avance de ${nm}</span>
-        <p>${rate>=80 ? `Sesión buena (${rate} % sin pista): llevas <b>${Math.min(f.good,MASTER_SESSIONS)} de ${MASTER_SESSIONS}</b>. ${f.good>=1 && f.good<MASTER_SESSIONS ? "Una más así y pasas al siguiente patrón." : ""}`
-                     : `Esta vez ${rate} % sin pista; hace falta 75 % para contar. El contador vuelve a 0 de ${MASTER_SESSIONS}.`}</p></section>`; })()}`;
+        <p>${f.n && f.ci/f.n>=MASTER_RATE ? `Sesión buena (${rate} % sin pista): llevas <b>${Math.min(f.good,MASTER_SESSIONS)} de ${MASTER_SESSIONS}</b>. ${f.good>=1 && f.good<MASTER_SESSIONS ? "Una más así y pasas al siguiente patrón." : ""}`
+                     : `Esta vez ${rate} % sin pista; hace falta ${Math.round(MASTER_RATE*100)} % para contar. El contador vuelve a 0 de ${MASTER_SESSIONS}.`}</p></section>`; })()}`;
   dock.innerHTML = `<div class="dock-in"><button class="btn primary big" data-go="home">Volver al inicio</button></div>`;
 }
 
