@@ -373,6 +373,7 @@ function dockState(){
 function toggleListening(){
   if(S.dict){ S.dict.stop(true); return; }
   if(useGemini()) return recordForGemini();
+  if(S.cfg.engine==="gemini" && !S.cfg.key && !S.warnedKey){ S.warnedKey = true; toast("Sin clave de Gemini: se usa el dictado de Safari. Pega la clave en Ajustes."); }
   if(!SR){ toast("Este navegador no tiene dictado. Usa Chrome o Safari."); return; }
   const base = "";   // dictar de nuevo reemplaza la frase anterior
   let heard = "", done = false, stopping = false, wantCheck = true, errored = false, live = false, retried = false, rec = null;
@@ -827,13 +828,14 @@ function renderSettings(app){
         <option value="gemini" ${c.engine==="gemini"?"selected":""}>Gemini: graba y transcribe (más preciso, ~1–2 s)</option>
         <option value="browser" ${c.engine!=="gemini"?"selected":""}>Navegador: Safari / Chrome (instantáneo)</option></select></label>
       <p class="small muted">Gemini oye mejor las terminaciones (-ed, -s) y no corrige tus errores; usa la misma clave. Sin clave se usa el del navegador.</p>
+      ${c.engine==="gemini" && !c.key ? `<p class="small" style="color:var(--bad)"><b>Falta la clave:</b> sin ella estás usando el dictado de Safari, no Gemini. Pégala arriba.</p>` : ""}
       <label class="f">Idioma del reconocedor<select id="c-lang">
         <option value="en-US" ${c.lang==="en-US"?"selected":""}>Inglés (Estados Unidos)</option>
         <option value="en-GB" ${c.lang==="en-GB"?"selected":""}>Inglés (Reino Unido)</option></select></label>
       <label class="f">Pausa para pensar antes de que corte el dictado<select id="c-pause">
         ${[2,3,4,5].map(s=>`<option value="${s}" ${(Number(c.pause)||3)===s?"selected":""}>${s} segundos</option>`).join("")}</select></label>
       <label class="chk"><input type="checkbox" id="c-auto" ${c.autoCheck?"checked":""}> Comprobar sola al terminar de dictar (sin confirmar con ✓)</label>
-      <p class="small muted">Versión de la app: <b>v2.1 · 11-11-2026</b></p>
+      <p class="small muted">Versión de la app: <b>v2.2 · 11-11-2026</b></p>
       <p class="small muted">Dictado del navegador: <b>${SR ? "disponible" : "no disponible"}</b> · Grabación para Gemini: <b>${CAN_REC ? "disponible" : "no disponible"}</b>.</p>
       <div class="row"><button class="btn primary" type="submit">Guardar</button><button class="btn" type="button" data-act="testKey">Probar clave</button></div>
     </form>
