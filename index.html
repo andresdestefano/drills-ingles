@@ -833,6 +833,7 @@ function renderSettings(app){
       <label class="f">Pausa para pensar antes de que corte el dictado<select id="c-pause">
         ${[2,3,4,5].map(s=>`<option value="${s}" ${(Number(c.pause)||3)===s?"selected":""}>${s} segundos</option>`).join("")}</select></label>
       <label class="chk"><input type="checkbox" id="c-auto" ${c.autoCheck?"checked":""}> Comprobar sola al terminar de dictar (sin confirmar con ✓)</label>
+      <p class="small muted">Versión de la app: <b>v2.1 · 11-11-2026</b></p>
       <p class="small muted">Dictado del navegador: <b>${SR ? "disponible" : "no disponible"}</b> · Grabación para Gemini: <b>${CAN_REC ? "disponible" : "no disponible"}</b>.</p>
       <div class="row"><button class="btn primary" type="submit">Guardar</button><button class="btn" type="button" data-act="testKey">Probar clave</button></div>
     </form>
