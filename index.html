@@ -361,7 +361,6 @@ function afterDictation(heardSomething){
   const ta = $("#ans"); if(ta && S.drill) S.drill.answer = ta.value;
   if(heardSomething && S.drill) S.drill.fromDict = true;
   dockState();
-  if(heardSomething && S.cfg.autoCheck && S.view==="drill" && S.drill?.phase==="answer") check();
 }
 function dockState(){
   const has = !!$("#ans")?.value.trim();
@@ -834,8 +833,7 @@ function renderSettings(app){
         <option value="en-GB" ${c.lang==="en-GB"?"selected":""}>Inglés (Reino Unido)</option></select></label>
       <label class="f">Pausa para pensar antes de que corte el dictado<select id="c-pause">
         ${[2,3,4,5].map(s=>`<option value="${s}" ${(Number(c.pause)||3)===s?"selected":""}>${s} segundos</option>`).join("")}</select></label>
-      <label class="chk"><input type="checkbox" id="c-auto" ${c.autoCheck?"checked":""}> Comprobar sola al terminar de dictar (sin confirmar con ✓)</label>
-      <p class="small muted">Versión de la app: <b>v2.2 · 11-11-2026</b></p>
+      <p class="small muted">Versión de la app: <b>v2.3 · 11-11-2026</b></p>
       <p class="small muted">Dictado del navegador: <b>${SR ? "disponible" : "no disponible"}</b> · Grabación para Gemini: <b>${CAN_REC ? "disponible" : "no disponible"}</b>.</p>
       <div class="row"><button class="btn primary" type="submit">Guardar</button><button class="btn" type="button" data-act="testKey">Probar clave</button></div>
     </form>
@@ -1124,7 +1122,7 @@ document.addEventListener("submit", e => {
     S.ui.bankPat = pid; S.ui.edit = undefined; toast("Frase guardada"); render();
   }
   if(e.target.id==="cfgform"){
-    S.cfg = {v:3, key:$("#c-key").value.trim(), model:$("#c-model").value.trim() || "gemini-flash-lite-latest", engine:$("#c-engine").value, lang:$("#c-lang").value, pause:Number($("#c-pause").value)||3, autoCheck:$("#c-auto").checked};
+    S.cfg = {v:3, key:$("#c-key").value.trim(), model:$("#c-model").value.trim() || "gemini-flash-lite-latest", engine:$("#c-engine").value, lang:$("#c-lang").value, pause:Number($("#c-pause").value)||3, autoCheck:false};
     saveCfg(); toast("Ajustes guardados"); S.view = "home"; render(); return;
   }
   if(e.target.id==="patform"){
