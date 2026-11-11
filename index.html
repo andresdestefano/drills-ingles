@@ -122,6 +122,8 @@ textarea#ans:focus{border-color:var(--accent);outline:none}
 .fb{display:flex;flex-direction:column;gap:14px}
 .fb .line{font-size:1.12rem;line-height:1.45;overflow-wrap:anywhere}
 .fb .x{background:var(--bad-soft);color:var(--bad);border-radius:4px;padding:0 3px;text-decoration:line-through;text-decoration-thickness:1.5px}
+.fb .say{cursor:pointer;border-bottom:1.5px dotted currentColor}
+.btn.sm{padding:6px 10px;min-height:0;flex:0 0 auto}
 .fb .miss{background:var(--good-soft);color:var(--good);border-radius:4px;padding:0 3px;font-weight:700}
 .rule{border-left:3px solid var(--accent);padding:4px 0 4px 12px}
 .alts{display:flex;flex-direction:column;gap:2px;color:var(--muted)}
@@ -202,8 +204,8 @@ function weakness(pid){
   return (inc + alm*0.5 + h*0.3) / p.recent.length;
 }
 function accuracy(pid){ const r = pst(pid).recent; if(!r.length) return null; return r.filter(a=>a.r==="correct").length / r.length; }
-const FOCUS_MAX = 12, PREVIEW_MAX = 8, MASTER_RATE = 0.8, MASTER_SESSIONS = 2, MASTER_MIN_ITEMS = 5;
-// Dominio: 2 sesiones seguidas (el mismo día cuenta) con >=80 % correctas sin pista (mínimo 5 frases del patrón en la sesión).
+const FOCUS_MAX = 12, PREVIEW_MAX = 8, MASTER_RATE = 0.75, MASTER_SESSIONS = 2, MASTER_MIN_ITEMS = 5;
+// Dominio: 2 sesiones seguidas (el mismo día cuenta) con >=75 % correctas sin pista (mínimo 5 frases del patrón en la sesión).
 function applySessionToMastery(pid, b, day, when){
   if(b.n < MASTER_MIN_ITEMS) return false;
   const ps = pst(pid);
@@ -333,13 +335,25 @@ function gradeAnswer(ans, accepted){
   }
   return {suggest: best.score===1 ? "correct" : best.score>=0.75 ? "almost" : "incorrect", best:best.a, score:best.score};
 }
+// Pronunciación con la voz del propio teléfono (gratis e instantánea). Una palabra suelta va más lenta.
+function say(text, word){
+  if(!("speechSynthesis" in window)){ toast("Este navegador no puede leer en voz alta."); return; }
+  const t = String(text).replace(/^[^\w']+|[^\w']+$/g, "");
+  if(!t) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(t);
+  u.lang = S.cfg.lang || "en-US"; u.rate = word ? 0.75 : 0.9;
+  const v = speechSynthesis.getVoices().filter(v => v.lang && v.lang.replace("_","-").startsWith(u.lang));
+  if(v.length) u.voice = v.find(x => /enhanced|premium|natural|samantha|google/i.test(x.name)) || v[0];
+  speechSynthesis.speak(u);
+}
 function diffHtml(ans, target){
   const ua = String(ans).trim().split(/\s+/).filter(Boolean), ta = String(target).trim().split(/\s+/).filter(Boolean);
   const key = w => norm(w).join(" ");
   const r = lcs(ua.map(key), ta.map(key));
   return {
     user: ua.map((w,i)=> r.ma.has(i) ? esc(w) : `<span class="x">${esc(w)}</span>`).join(" "),
-    target: ta.map((w,j)=> r.mb.has(j) ? esc(w) : `<span class="miss">${esc(w)}</span>`).join(" ")
+    target: ta.map((w,j)=> `<span class="say${r.mb.has(j) ? "" : " miss"}" data-say="${esc(w)}">${esc(w)}</span>`).join(" ")
   };
 }
 
@@ -739,7 +753,7 @@ function finalize(sess, silent){
   for(const [pid,b] of Object.entries(by)){
     const ps = pst(pid), before = ps.box;
     if(b.x/b.n >= 0.3) ps.box = Math.max(ps.box-2, 0);
-    else if(b.ci/b.n >= 0.8) ps.box = Math.min(ps.box+1, 6);
+    else if(b.ci/b.n >= MASTER_RATE) ps.box = Math.min(ps.box+1, 6);
     ps.nextReviewDay = sess.day + INTERVAL[ps.box];
     const wasFocus = pid===sess.focusId;
     if(wasFocus && applySessionToMastery(pid, b, sess.day)) (sess.mastered ||= []).push(pid);
@@ -833,7 +847,7 @@ function renderSettings(app){
         <option value="en-GB" ${c.lang==="en-GB"?"selected":""}>Inglés (Reino Unido)</option></select></label>
       <label class="f">Pausa para pensar antes de que corte el dictado<select id="c-pause">
         ${[2,3,4,5].map(s=>`<option value="${s}" ${(Number(c.pause)||3)===s?"selected":""}>${s} segundos</option>`).join("")}</select></label>
-      <p class="small muted">Versión de la app: <b>v2.3 · 11-11-2026</b></p>
+      <p class="small muted">Versión de la app: <b>v2.4 · 11-11-2026</b></p>
       <p class="small muted">Dictado del navegador: <b>${SR ? "disponible" : "no disponible"}</b> · Grabación para Gemini: <b>${CAN_REC ? "disponible" : "no disponible"}</b>.</p>
       <div class="row"><button class="btn primary" type="submit">Guardar</button><button class="btn" type="button" data-act="testKey">Probar clave</button></div>
     </form>
@@ -871,7 +885,7 @@ function renderHome(app){
       <p class="rule">${esc(fp.rule)}</p>
       <div class="row small muted"><span>Caja ${boxesHtml(fps.box)}</span><span>Aciertos <b class="mono">${acc==null?"—":Math.round(acc*100)+"%"}</b></span><span>Racha <b class="mono">${fps.streak.length}</b></span></div>
       <div class="goal"><span class="dots">${Array.from({length:MASTER_SESSIONS},(_,i)=>`<i class="${i<prog?"on":""}"></i>`).join("")}</span>
-        <span class="small">Para pasar al siguiente patrón: ${MASTER_SESSIONS} sesiones seguidas con 80 % o más sin pista (pueden ser el mismo día). Llevas <b>${prog} de ${MASTER_SESSIONS}</b>.</span></div>
+        <span class="small">Para pasar al siguiente patrón: ${MASTER_SESSIONS} sesiones seguidas con 75 % o más sin pista (pueden ser el mismo día). Llevas <b>${prog} de ${MASTER_SESSIONS}</b>.</span></div>
       ${nextName ? `<p class="small muted">Después sigue <b>${esc(nextName)}</b>. La app te pasa sola cuando cumplas la meta.</p>` : ""}
     </section>
     <section class="panel">
@@ -925,7 +939,7 @@ function renderDrill(app, dock){
     dock.innerHTML = `<div class="dock-in"><button class="btn" data-act="fix">Corregir mi frase</button><button class="btn big" data-act="next">Saltar la revisión</button></div>`;
   } else {
     const r = d.res, target = r.best || it.accepted[0];
-    const df = r.verdict==="correct" ? {user:esc(d.answer), target:esc(target)} : diffHtml(d.answer, target);
+    const df = r.verdict==="correct" ? {user:esc(d.answer), target:diffHtml(target, target).target} : diffHtml(d.answer, target);
     const others = it.accepted.filter(a=>norm(a).join(" ")!==norm(target).join(" ") && norm(a).join(" ")!==norm(d.answer).join(" "));
     const label = {correct:"Correcto", almost:"Casi", incorrect:"Incorrecto"}[r.verdict];
     const expl = r.explanation || (r.verdict==="correct" ? (r.learned ? "Bien dicho. Guardé tu versión como respuesta válida para esta frase." : "") : (it.ruleShort || S.patterns[step.p]?.rule || ""));
@@ -933,7 +947,8 @@ function renderDrill(app, dock){
       <section class="fb">
         <div class="verdict ${r.verdict}">${label}${r.source==="local" ? '<small>comparación automática</small>' : ""}</div>
         <div class="stack" style="gap:2px"><span class="eyebrow">Tu respuesta</span><p class="line">${d.answer.trim()? df.user : '<span class="muted">(sin respuesta)</span>'}</p></div>
-        ${r.verdict==="correct" && norm(target).join(" ")===norm(d.answer).join(" ") ? "" : `<div class="stack" style="gap:2px"><span class="eyebrow">${r.verdict==="correct" ? "Versión de referencia" : "Así se dice"}</span><p class="line">${df.target}</p></div>`}
+        ${r.verdict==="correct" && norm(target).join(" ")===norm(d.answer).join(" ") ? "" : `<div class="stack" style="gap:2px"><span class="eyebrow">${r.verdict==="correct" ? "Versión de referencia" : "Así se dice"}</span><p class="line">${df.target}</p>
+          <div class="row small"><button class="btn ghost sm" data-say="${esc(target)}">🔊 Escuchar la frase</button><span class="muted">o toca una palabra</span></div></div>`}
         ${expl ? `<p class="rule">${esc(expl)}</p>` : ""}
         ${others.length ? `<div class="alts small"><span>También vale:</span>${others.slice(0,3).map(a=>`<span>${esc(a)}</span>`).join("")}</div>` : ""}
         ${step.k==="mixed" ? `<p class="small muted">Este era del patrón: <b>${esc(pname)}</b></p>` : ""}
@@ -973,13 +988,13 @@ function renderSummary(app, dock){
     <section class="panel"><span class="eyebrow">Cajas de repaso</span>
       ${(s.changes||[]).map(ch=>`<div class="spread"><span>${esc(S.patterns[ch.p]?.name||ch.p)} <span class="muted small mono">${ch.c}/${ch.n}</span></span>
         <span class="row small">${boxesHtml(ch.after)}<span class="mono ${ch.after>ch.before?"":"muted"}" style="${ch.after>ch.before?"color:var(--good)":ch.after<ch.before?"color:var(--bad)":""}">${ch.after>ch.before?"sube":ch.after<ch.before?"baja":"igual"}</span></span></div>`).join("")}
-      <p class="small muted">Sube con 80% o más correctas sin pista. Baja dos cajas con 30% o más incorrectas.</p>
+      <p class="small muted">Sube con 75% o más correctas sin pista. Baja dos cajas con 30% o más incorrectas.</p>
     </section>
     ${(()=>{ const f = (s.changes||[]).find(ch=>ch.focus); if(!f || (s.mastered||[]).includes(f.p)) return "";
       const rate = f.n ? Math.round(100*f.ci/f.n) : 0, nm = esc(S.patterns[f.p]?.name||f.p);
       return `<section class="panel"><span class="eyebrow">Avance de ${nm}</span>
         <p>${rate>=80 ? `Sesión buena (${rate} % sin pista): llevas <b>${Math.min(f.good,MASTER_SESSIONS)} de ${MASTER_SESSIONS}</b>. ${f.good>=1 && f.good<MASTER_SESSIONS ? "Una más así y pasas al siguiente patrón." : ""}`
-                     : `Esta vez ${rate} % sin pista; hace falta 80 % para contar. El contador vuelve a 0 de ${MASTER_SESSIONS}.`}</p></section>`; })()}`;
+                     : `Esta vez ${rate} % sin pista; hace falta 75 % para contar. El contador vuelve a 0 de ${MASTER_SESSIONS}.`}</p></section>`; })()}`;
   dock.innerHTML = `<div class="dock-in"><button class="btn primary big" data-go="home">Volver al inicio</button></div>`;
 }
 
@@ -1072,8 +1087,9 @@ function renderBank(app){
 
 /* ---------- eventos ---------- */
 document.addEventListener("click", async e => {
-  const t = e.target.closest("[data-go],[data-act],[data-pat],[data-bank],[data-item]");
+  const t = e.target.closest("[data-say],[data-go],[data-act],[data-pat],[data-bank],[data-item]");
   if(!t) return;
+  if(t.dataset.say){ say(t.dataset.say, t.classList.contains("say")); return; }
   if(t.dataset.go){ S.view = t.dataset.go; S.ui.edit = undefined; render(); window.scrollTo(0,0); return; }
 
   if(t.dataset.pat){ S.ui.openPattern = S.ui.openPattern===t.dataset.pat ? null : t.dataset.pat; render(); return; }
