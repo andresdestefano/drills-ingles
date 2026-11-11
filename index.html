@@ -457,6 +457,30 @@ function toggleListening(){
 /* ---------- dictado con Gemini: graba la voz y la transcribe tal cual ---------- */
 // Un solo AudioContext para toda la página (iPhone limita cuántos se pueden abrir).
 let ACTX = null;
+// El micrófono se abre una vez y queda abierto durante la sesión de frases: en iPhone, cerrarlo y
+// reabrirlo entre frases a veces devuelve un micrófono mudo (la segunda frase "no se oye").
+const MICIN = {stream:null, src:null, node:null, onFrame:null};
+function micAlive(){ return !!MICIN.stream && MICIN.stream.getAudioTracks().some(t => t.readyState==="live" && !t.muted) && !!ACTX && ACTX.state!=="closed"; }
+async function openMic(){
+  if(micAlive()){ if(ACTX.state!=="running") await ACTX.resume().catch(()=>{}); return; }
+  releaseMic();
+  ACTX ||= new (window.AudioContext || window.webkitAudioContext)();
+  if(ACTX.state!=="running") ACTX.resume().catch(()=>{});
+  MICIN.stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}});
+  if(ACTX.state!=="running") await ACTX.resume().catch(()=>{});
+  MICIN.src = ACTX.createMediaStreamSource(MICIN.stream);
+  MICIN.node = ACTX.createScriptProcessor(4096, 1, 1);
+  MICIN.node.onaudioprocess = e => { if(MICIN.onFrame) MICIN.onFrame(e.inputBuffer.getChannelData(0)); };
+  MICIN.src.connect(MICIN.node); MICIN.node.connect(ACTX.destination);
+}
+// Suelta el micrófono del todo; si el iPhone lo dejó mudo, también se renueva el AudioContext.
+function releaseMic(fresh){
+  MICIN.onFrame = null;
+  try{ MICIN.node && (MICIN.node.onaudioprocess = null); MICIN.node?.disconnect(); MICIN.src?.disconnect(); }catch{}
+  MICIN.stream?.getTracks().forEach(t => t.stop());
+  MICIN.stream = MICIN.src = MICIN.node = null;
+  if(fresh && ACTX){ try{ ACTX.close(); }catch{} ACTX = null; }
+}
 function wavBase64(chunks, rate){
   const OUT = 16000, ratio = rate / OUT;
   let total = 0; for(const c of chunks) total += c.length;
@@ -490,14 +514,13 @@ Rules:
 Reply only with this JSON: {"text":"the transcription"}`;
 }
 async function recordForGemini(){
-  let done = false, cancelled = false, live = false, heard = false, stream = null, src = null, node = null;
-  const chunks = [], T = {}, t0 = Date.now();
+  let done = false, cancelled = false, live = false, heard = false, retried = false, signal = false;
+  const chunks = [], T = {}; let t0 = Date.now();
   let noise = 0, noiseN = 0, lastVoice = 0, voiced = 0, rate = 48000;
   const setPhase = p => { S.micPhase = p; S.listening = p==="live" || p==="starting"; micState(); };
   const cleanup = () => {
     for(const k in T) clearTimeout(T[k]);
-    try{ node && (node.onaudioprocess = null); node?.disconnect(); src?.disconnect(); }catch{}
-    stream?.getTracks().forEach(t => t.stop());
+    MICIN.onFrame = null;   // el micrófono queda abierto para la próxima frase
     document.removeEventListener("visibilitychange", onHide);
   };
   const end = (heardSomething) => { if(S.dict===dict) S.dict = null; setPhase("idle"); afterDictation(heardSomething); };
@@ -526,35 +549,43 @@ async function recordForGemini(){
     if(!done) finish();
   };
   const dict = {stop, ctl:null};
-  const onHide = () => { if(document.hidden) stop(false); };
+  const onHide = () => { if(document.hidden){ stop(false); releaseMic(); } };
   S.dict = dict; setPhase("starting");
   document.addEventListener("visibilitychange", onHide);
-  try{
-    ACTX ||= new (window.AudioContext || window.webkitAudioContext)();
-    if(ACTX.state!=="running") ACTX.resume().catch(()=>{});
-    stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}});
-  }catch(e){
-    toast(e?.name==="NotAllowedError" ? "Permite el micrófono en el navegador para dictar." : "No se pudo abrir el micrófono. Toca Hablar otra vez.");
-    cancelled = true; done = true; cleanup(); end(false); return;
-  }
-  if(done){ cleanup(); return; }
-  rate = ACTX.sampleRate;
-  src = ACTX.createMediaStreamSource(stream);
-  node = ACTX.createScriptProcessor(4096, 1, 1);
-  node.onaudioprocess = e => {
+  const onFrame = d => {
     if(done) return;
-    const d = e.inputBuffer.getChannelData(0), now = Date.now();
+    const now = Date.now();
     chunks.push(new Float32Array(d));
-    if(!live){ live = true; setPhase("live"); }
     let sq = 0; for(let i=0;i<d.length;i++) sq += d[i]*d[i];
     const rms = Math.sqrt(sq / d.length);
+    if(rms > 0) signal = true;   // un micrófono mudo del iPhone entrega ceros exactos
+    if(!live){ live = true; setPhase("live"); }
     if(now - t0 < 300){ noise += rms; noiseN++; return; }   // ruido de fondo para calibrar
     const thr = Math.max(0.012, 2.5 * (noiseN ? noise/noiseN : 0));
     if(rms > thr){ if(++voiced >= 2){ heard = true; lastVoice = now; clearTimeout(T.ns); } }
     else voiced = 0;
     if(heard && now - lastVoice > pauseMs()) finish();
   };
-  src.connect(node); node.connect(ACTX.destination);
+  const begin = async () => {
+    try{ await openMic(); }
+    catch(e){
+      toast(e?.name==="NotAllowedError" ? "Permite el micrófono en el navegador para dictar." : "No se pudo abrir el micrófono. Toca Hablar otra vez.");
+      cancelled = true; done = true; cleanup(); end(false); return;
+    }
+    if(done) return;
+    rate = ACTX.sampleRate; chunks.length = 0; live = false; signal = false; t0 = Date.now(); noise = 0; noiseN = 0; voiced = 0;
+    MICIN.onFrame = onFrame;
+    // Vigilancia: si en 1,5 s no llega sonido real, el micrófono quedó mudo; se reabre una vez solo.
+    T.wd = setTimeout(() => {
+      if(done || signal) return;
+      MICIN.onFrame = null; releaseMic(true);
+      if(!retried){ retried = true; begin(); return; }
+      toast("El micrófono no respondió. Toca Hablar otra vez.");
+      stop(false);
+    }, 1500);
+  };
+  await begin();
+  if(done) return;
   T.ns = setTimeout(() => { if(!heard){ toast("No escuché nada. Toca Hablar y di la frase."); stop(false); } }, NO_SPEECH_MS);
   T.max = setTimeout(() => stop(true), MAX_MS);
 }
@@ -766,6 +797,7 @@ function render(){
   if(!S.state) S.state = blankState();
   const v = S.view;
   if(v==="drill"){ renderDrill(app, dock); dockState(); return; }
+  if(MICIN.stream && !S.dict) releaseMic();
   if(v==="summary") return renderSummary(app, dock);
   if(v==="progress") renderProgress(app); else if(v==="bank") renderBank(app); else if(v==="settings") renderSettings(app); else renderHome(app);
   dock.innerHTML = tabsHtml();
