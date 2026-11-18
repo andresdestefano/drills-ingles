@@ -127,6 +127,11 @@ textarea#ans:focus{border-color:var(--accent);outline:none}
 .fb .miss{background:var(--good-soft);color:var(--good);border-radius:4px;padding:0 3px;font-weight:700}
 .rule{border-left:3px solid var(--accent);padding:4px 0 4px 12px}
 .alts{display:flex;flex-direction:column;gap:2px;color:var(--muted)}
+.ask{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.ask textarea{width:100%;min-height:48px;resize:vertical;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);padding:10px 12px;font-size:1rem;line-height:1.4}
+.ask textarea:focus{border-color:var(--accent);outline:none}
+.ask .q{font-weight:700}
+.ask .a{white-space:pre-line;line-height:1.45}
 .verdict{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--display);font-weight:700;font-size:1.35rem;padding:12px 16px;border-radius:12px}
 .verdict small{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;font-weight:500;opacity:.8}
 .verdict.correct{background:var(--good-soft);color:var(--good)} .verdict.almost{background:var(--warn-soft);color:var(--warn)} .verdict.incorrect{background:var(--bad-soft);color:var(--bad)}
@@ -635,10 +640,10 @@ function check(){
   render();
 }
 const MODEL_FALLBACKS = ["gemini-flash-lite-latest","gemini-3.5-flash-lite","gemini-flash-latest","gemini-3.8-flash"];
-async function geminiOnce(model, prompt, signal, extra){
+async function geminiOnce(model, prompt, signal, extra, maxTok){
   const url = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent";
   const res = await fetch(url, {method:"POST", signal, headers:{"Content-Type":"application/json", "x-goog-api-key":S.cfg.key.trim()},
-    body:JSON.stringify({contents:[{role:"user", parts:[{text:prompt}, ...(extra||[])]}], generationConfig:{temperature:0.2, responseMimeType:"application/json", maxOutputTokens:300}})});
+    body:JSON.stringify({contents:[{role:"user", parts:[{text:prompt}, ...(extra||[])]}], generationConfig:{temperature:0.2, responseMimeType:"application/json", maxOutputTokens:maxTok||300}})});
   if(!res.ok){
     let detail = ""; try{ detail = (await res.json())?.error?.message || ""; }catch{}
     const err = new Error(detail || ("error " + res.status)); err.status = res.status; throw err;
@@ -650,7 +655,7 @@ async function geminiOnce(model, prompt, signal, extra){
   return JSON.parse(m[0]);
 }
 const BAD_KEY = e => (e?.status===400 && /API key/i.test(e.message)) || e?.status===403;
-async function gemini(prompt, signal, extra){
+async function gemini(prompt, signal, extra, maxTok){
   const first = S.cfg.model.trim();
   const chain = [first, ...MODEL_FALLBACKS.filter(m=>m!==first)];
   const errors = [];
@@ -659,7 +664,7 @@ async function gemini(prompt, signal, extra){
   const onAbort = () => ctl.abort();
   signal?.addEventListener("abort", onAbort);
   try{
-    const win = await Promise.any(chain.slice(0,2).map(m => geminiOnce(m, prompt, ctl.signal, extra)));
+    const win = await Promise.any(chain.slice(0,2).map(m => geminiOnce(m, prompt, ctl.signal, extra, maxTok)));
     ctl.abort(); return win;
   }catch(agg){
     if(signal?.aborted){ const e = new Error("cancelled"); e.name = "AbortError"; throw e; }
@@ -667,7 +672,7 @@ async function gemini(prompt, signal, extra){
   }finally{ signal?.removeEventListener("abort", onAbort); }
   // Respaldo en secuencia con el resto.
   for(const model of chain.slice(2)){
-    try{ return await geminiOnce(model, prompt, signal, extra); }
+    try{ return await geminiOnce(model, prompt, signal, extra, maxTok); }
     catch(e){
       if(e?.name==="AbortError") throw e;
       errors.push(e);
@@ -717,6 +722,36 @@ Responde solo con este JSON:
   d.grading = false;
   if(S.drill===d) render();
 }
+// Pregunta libre a Gemini sobre la frase ya comprobada (v2.6). Las preguntas anteriores de la misma frase van como contexto.
+async function askFree(){
+  const d = S.drill, step = currentStep(); if(!d || !step || d.phase!=="feedback" || d.asking) return;
+  const q = ($("#askq")?.value ?? d.q ?? "").trim(); if(!q) return;
+  const it = S.itemIdx[step.i] || {es:"", accepted:[""]};
+  const target = d.res?.best || it.accepted[0];
+  d.qa = d.qa || []; d.q = ""; d.asking = true; d.qa.push({q, a:""});
+  render(); document.querySelector(".ask")?.scrollIntoView({block:"end", behavior:"smooth"});
+  const prev = d.qa.slice(0,-1).map(x=>`Pregunta: ${x.q}\nRespuesta: ${x.a}`).join("\n\n");
+  const prompt = `Eres profesor de inglés de un hispanohablante adulto de nivel básico. Acaba de practicar esta frase:
+Frase en español: «${it.es}»
+Lo que dijo el alumno: «${d.answer.trim()}»
+Así se dice: «${target}»
+${it.accepted.length>1 ? "También vale: " + it.accepted.filter(a=>a!==target).join(" | ") + "\n" : ""}${prev ? "\nConversación anterior sobre esta frase:\n" + prev + "\n" : ""}
+Pregunta del alumno: «${q}»
+
+Responde en español de forma clara y breve (máximo 5 oraciones), con un ejemplo en inglés si ayuda. Háblale de tú. Si pregunta cómo se traduce algo, da la traducción y el sentido en esta frase.
+Responde solo con este JSON: {"answer":"tu respuesta"}`;
+  d.askCtl = new AbortController();
+  let a = "";
+  try{
+    const r = await gemini(prompt, d.askCtl.signal, null, 1200);
+    a = String(r?.answer || "").trim() || "Gemini no dio respuesta. Prueba a preguntar de otra forma.";
+  }catch(e){
+    if(e?.name==="AbortError") return;
+    a = e instanceof TypeError ? "Sin conexión con Gemini." : String(e?.message || "Gemini no respondió.").replace(/; se usa la comparación automática\.?/, ".");
+  }
+  d.qa[d.qa.length-1].a = a; d.asking = false;
+  if(S.drill===d && d.phase==="feedback" && !d.grading){ render(); document.querySelector(".ask")?.scrollIntoView({block:"end", behavior:"smooth"}); }
+}
 // Si el dictado entendió mal, vuelve a la misma frase con tu texto para corregirlo; no cuenta como intento.
 function fixAnswer(){
   const d = S.drill; if(!d) return;
@@ -728,6 +763,7 @@ function fixAnswer(){
 function next(){
   const d = S.drill;
   if(d.grading){ d.ctl?.abort(); d.grading = false; }
+  d.askCtl?.abort();
   grade(d.res.verdict);
 }
 function grade(r){
@@ -953,6 +989,12 @@ function renderDrill(app, dock){
         ${others.length ? `<div class="alts small"><span>También vale:</span>${others.slice(0,3).map(a=>`<span>${esc(a)}</span>`).join("")}</div>` : ""}
         ${step.k==="mixed" ? `<p class="small muted">Este era del patrón: <b>${esc(pname)}</b></p>` : ""}
         ${d.hint && r.verdict==="correct" ? `<p class="small muted">Con pista: cuenta como correcta, pero el patrón no sube de caja.</p>` : ""}
+        ${S.cfg.key ? `<div class="ask">
+          <span class="eyebrow">Pregúntale a Gemini sobre esta frase</span>
+          ${(d.qa||[]).map(x=>`<p class="q">${esc(x.q)}</p>${x.a ? `<p class="a">${esc(x.a)}</p>` : `<div class="verdict grading"><span class="dot"></span>Pensando…</div>`}`).join("")}
+          <textarea id="askq" autocomplete="off" autocapitalize="sentences" placeholder="Por ejemplo: ¿cómo se traduce turns out?" ${d.asking?"disabled":""}>${esc(d.q||"")}</textarea>
+          <div class="row"><button class="btn sm" data-act="askfree" ${d.asking?"disabled":""}>Preguntar</button></div>
+        </div>` : ""}
       </section>`;
     dock.innerHTML = `<div class="dock-in">${r.verdict!=="correct" ? `<button class="btn" data-act="fix">Me oyó mal: corregir</button>` : ""}<button class="btn primary big" data-act="next">Siguiente</button></div>`;
   }
@@ -1104,6 +1146,7 @@ document.addEventListener("click", async e => {
   else if(a==="testKey") testKey();
   else if(a==="next") next();
   else if(a==="fix") fixAnswer();
+  else if(a==="askfree") askFree();
   else if(a==="askend"){ stopDictation(false); S.drill.answer = $("#ans")?.value ?? S.drill.answer; S.drill.confirmEnd = true; render(); }
   else if(a==="noend"){ S.drill.confirmEnd = false; render(); }
   else if(a==="endnow"){ if(S.cur.attempts.length) finalize(S.cur, false); else { S.cur.done = true; S.cur.changes=[]; saveSession(S.cur); S.cur=null; S.view="home"; render(); } }
@@ -1152,10 +1195,11 @@ document.addEventListener("submit", e => {
 });
 document.addEventListener("keydown", e => {
   if(S.view!=="drill") return;
+  if(S.drill.phase==="feedback" && e.key==="Enter" && !e.shiftKey && e.target.id==="askq"){ e.preventDefault(); askFree(); return; }
   if(S.drill.phase==="answer" && e.key==="Enter" && !e.shiftKey && e.target.id==="ans"){ e.preventDefault(); check(); }
   else if(S.drill.phase==="feedback" && e.key==="Enter" && e.target.tagName!=="TEXTAREA"){ e.preventDefault(); next(); }
 });
-document.addEventListener("input", e => { if(e.target.id==="ans") dockState(); });
+document.addEventListener("input", e => { if(e.target.id==="ans") dockState(); else if(e.target.id==="askq" && S.drill) S.drill.q = e.target.value; });
 document.addEventListener("change", e => {
   if(e.target.id!=="importfile") return;
   const f = e.target.files?.[0]; if(!f) return;
