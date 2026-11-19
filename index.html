@@ -640,10 +640,21 @@ function check(){
   render();
 }
 const MODEL_FALLBACKS = ["gemini-flash-lite-latest","gemini-3.5-flash-lite","gemini-flash-latest","gemini-3.8-flash"];
+// v2.7: los modelos Gemini 3 piensan por defecto y eso hace lenta la revisión; se les pide pensar lo mínimo.
+// Si un modelo no acepta ese ajuste, se repite sin él y se recuerda para no volver a intentarlo.
+const NO_THINK_CFG = new Set();
+const wantsMinimal = m => !NO_THINK_CFG.has(m) && !/gemini-(1|2)\./.test(m);
 async function geminiOnce(model, prompt, signal, extra, maxTok){
   const url = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent";
+  const minimal = wantsMinimal(model);
+  const gen = {temperature:0.2, responseMimeType:"application/json", maxOutputTokens:maxTok||1024};
+  if(minimal) gen.thinkingConfig = {thinkingLevel:"minimal"};
   const res = await fetch(url, {method:"POST", signal, headers:{"Content-Type":"application/json", "x-goog-api-key":S.cfg.key.trim()},
-    body:JSON.stringify({contents:[{role:"user", parts:[{text:prompt}, ...(extra||[])]}], generationConfig:{temperature:0.2, responseMimeType:"application/json", maxOutputTokens:maxTok||300}})});
+    body:JSON.stringify({contents:[{role:"user", parts:[{text:prompt}, ...(extra||[])]}], generationConfig:gen})});
+  if(!res.ok && minimal && res.status===400){
+    let detail = ""; try{ detail = (await res.clone().json())?.error?.message || ""; }catch{}
+    if(/think/i.test(detail)){ NO_THINK_CFG.add(model); return geminiOnce(model, prompt, signal, extra, maxTok); }
+  }
   if(!res.ok){
     let detail = ""; try{ detail = (await res.json())?.error?.message || ""; }catch{}
     const err = new Error(detail || ("error " + res.status)); err.status = res.status; throw err;
@@ -722,7 +733,7 @@ Responde solo con este JSON:
   d.grading = false;
   if(S.drill===d) render();
 }
-// Pregunta libre a Gemini sobre la frase ya comprobada (v2.6). Las preguntas anteriores de la misma frase van como contexto.
+// Pregunta libre a Gemini sobre la frase ya comprobada (desde v2.6). Las preguntas anteriores de la misma frase van como contexto.
 async function askFree(){
   const d = S.drill, step = currentStep(); if(!d || !step || d.phase!=="feedback" || d.asking) return;
   const q = ($("#askq")?.value ?? d.q ?? "").trim(); if(!q) return;
